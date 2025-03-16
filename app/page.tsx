@@ -433,7 +433,7 @@ export default function ImageInpaintingApp() {
       // Lấy ảnh sản phẩm (chỉ dùng để gửi API)
       const productImage = products[selectedProduct as keyof typeof products];
 
-      console.log("Ảnh mask (node 736):", maskImage);
+      console.log("Ảnh mask (node 745):", maskImage);
       console.log("Ảnh sản phẩm (node 735):", productImage);
       console.log("Ảnh upload (node 731):", imageData);
 
@@ -441,7 +441,7 @@ export default function ImageInpaintingApp() {
       const [uploadedImageId, productImageId, maskImageId] = await Promise.all([
         uploadImageToTensorArt(imageData), // Gửi ảnh upload cho node 731
         uploadImageToTensorArt(productImage), // Gửi ảnh sản phẩm cho node 735
-        uploadImageToTensorArt(maskImage), // Gửi ảnh mask cho node 736
+        uploadImageToTensorArt(maskImage), // Gửi ảnh mask cho node 745
       ]);
 
       // Gửi đến workflow và lấy kết quả
@@ -615,6 +615,14 @@ export default function ImageInpaintingApp() {
       throw new Error("Không tìm thấy canvas hoặc ảnh");
     }
 
+    // Kiểm tra kích thước của ảnh upload và mask
+    if (inputCanvas.width !== maskCanvas.width || inputCanvas.height !== maskCanvas.height) {
+      throw new Error("Kích thước ảnh upload và mask không khớp");
+    }
+
+    console.log("Kích thước ảnh upload:", inputCanvas.width, inputCanvas.height);
+    console.log("Kích thước mask:", maskCanvas.width, maskCanvas.height);
+
     // Tạo canvas tạm thời với cùng kích thước
     const combinedCanvas = document.createElement("canvas");
     combinedCanvas.width = inputCanvas.width;
@@ -661,7 +669,7 @@ export default function ImageInpaintingApp() {
 
     // Xuất ảnh và log để kiểm tra
     const result = maskCanvasBW.toDataURL("image/png");
-    console.log("Kiểm tra ảnh kết hợp:", result); // Mở URL này trong trình duyệt
+    console.log("Ảnh mask đã tạo (node 745):", result); // Mở URL này trong trình duyệt để xem ảnh mask
     return result;
   };
 
