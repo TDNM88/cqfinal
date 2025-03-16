@@ -286,6 +286,40 @@ export default function ImageInpaintingApp() {
     inputCtx.restore()
   }
 
+  // Thêm hàm drawResultOnCanvas
+  const drawResultOnCanvas = (img: HTMLImageElement) => {
+    const outputCanvas = outputCanvasRef.current;
+    if (!outputCanvas) return;
+
+    const ctx = outputCanvas.getContext('2d');
+    if (!ctx) return;
+
+    // Xóa canvas cũ
+    ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+
+    // Tính toán kích thước mới dựa trên tỷ lệ ảnh
+    const aspectRatio = img.width / img.height;
+    const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+    const maxHeight = outputCanvas.parentElement?.clientHeight || 500;
+
+    let canvasWidth, canvasHeight;
+
+    if (aspectRatio > 1) {
+      canvasWidth = Math.min(maxWidth, img.width);
+      canvasHeight = canvasWidth / aspectRatio;
+    } else {
+      canvasHeight = Math.min(maxHeight, img.height);
+      canvasWidth = canvasHeight * aspectRatio;
+    }
+
+    // Cập nhật kích thước canvas
+    outputCanvas.width = canvasWidth;
+    outputCanvas.height = canvasHeight;
+
+    // Vẽ ảnh kết quả
+    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -293,16 +327,21 @@ export default function ImageInpaintingApp() {
       setIsProcessing(true)
       setError(null)
       
-      // 1. Upload ảnh và mask
+      // 1. Tạo ảnh kết hợp (ảnh gốc + mask)
+      const combinedImage = await getCombinedImage()
+
+      console.log('Ảnh kết hợp (ảnh + mask):', combinedImage);
+
+      // 2. Upload ảnh kết hợp và mask
       const [imageId, maskId] = await Promise.all([
-        uploadImageToTensorArt(imageData),
+        uploadImageToTensorArt(combinedImage),
         uploadImageToTensorArt(maskData)
       ])
 
-      // 2. Tạo job xử lý và theo dõi tiến trình
+      // 3. Tạo job xử lý và theo dõi tiến trình
       const resultUrl = await processInpainting(imageId, maskId)
       
-      // 3. Cập nhật kết quả
+      // 4. Cập nhật kết quả
       setInpaintedImage(resultUrl)
       const img = new Image()
       img.onload = () => drawResultOnCanvas(img)
@@ -440,6 +479,35 @@ export default function ImageInpaintingApp() {
       setMaskData(maskCanvasRef.current.toDataURL())
     }
   }
+
+  const getCombinedImage = async (): Promise<string> => {
+    const inputCanvas = inputCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+
+    if (!inputCanvas || !maskCanvas || !image) {
+      throw new Error('Không tìm thấy canvas hoặc ảnh');
+    }
+
+    // Tạo một canvas tạm thời để kết hợp ảnh và mask
+    const combinedCanvas = document.createElement('canvas');
+    combinedCanvas.width = inputCanvas.width;
+    combinedCanvas.height = inputCanvas.height;
+    const ctx = combinedCanvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('Không thể tạo context cho canvas');
+    }
+
+    // Vẽ ảnh gốc lên canvas tạm thời
+    ctx.drawImage(inputCanvas, 0, 0);
+
+    // Vẽ mask lên canvas tạm thời với chế độ blend phù hợp
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.drawImage(maskCanvas, 0, 0);
+
+    // Chuyển canvas thành data URL (base64)
+    return combinedCanvas.toDataURL('image/png');
+  };
 
   return (
     <div
