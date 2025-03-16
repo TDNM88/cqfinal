@@ -138,17 +138,12 @@ export function useInpainting() {
   const [error, setError] = useState<string | null>(null)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
 
-  const processInpainting = async (imageData: string, maskData: string) => {
+  const processInpainting = async (imageId: string, maskId: string) => {
     setLoading(true)
     setError(null)
     setResultUrl(null)
 
     try {
-      const [imageId, maskId] = await Promise.all([
-        uploadImageToTensorArt(imageData),
-        uploadImageToTensorArt(maskData)
-      ])
-
       const jobResponse = await createInpaintingJob(imageId, maskId)
       const jobId = jobResponse.job.id
 
