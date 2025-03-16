@@ -287,93 +287,53 @@ export default function ImageInpaintingApp() {
     setError(null)
 
     try {
-      // Get the mask data
       const maskCanvas = maskCanvasRef.current
-      const maskCtx = maskCanvas.getContext("2d")
-      if (!maskCtx) throw new Error("Không thể lấy ngữ cảnh mặt nạ")
-
-      // Get the original image data
       const inputCanvas = inputCanvasRef.current
+
       if (!inputCanvas) throw new Error("Không thể lấy canvas đầu vào")
 
-      // Convert canvases to data URLs
+      // Chuyển đổi canvas thành data URLs
       const imageDataUrl = inputCanvas.toDataURL("image/png")
       const maskDataUrl = maskCanvas.toDataURL("image/png")
 
-      // Simulate API call to inpainting service
-      // In a real application, you would replace this with your actual API call
-      await simulateInpaintingAPI(imageDataUrl, maskDataUrl)
+      // Gọi API thực tế
+      const response = await fetch('/api/inpaint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: imageDataUrl,
+          maskData: maskDataUrl
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      const { inpaintedImage } = await response.json()
+
+      // Hiển thị kết quả
+      setInpaintedImage(inpaintedImage)
+      const outputCanvas = outputCanvasRef.current
+      if (outputCanvas) {
+        const ctx = outputCanvas.getContext('2d')
+        if (ctx) {
+          const img = new Image()
+          img.onload = () => {
+            ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height)
+            ctx.drawImage(img, 0, 0, outputCanvas.width, outputCanvas.height)
+          }
+          img.src = inpaintedImage
+        }
+      }
     } catch (err) {
       console.error("Lỗi xử lý ảnh:", err)
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định")
     } finally {
       setIsProcessing(false)
     }
-  }
-
-  // Simulate an API call to an inpainting service
-  const simulateInpaintingAPI = async (imageDataUrl: string, maskDataUrl: string) => {
-    // This is a simulation - in a real app, you would call your inpainting API here
-    console.log("Gửi đến API xử lý ảnh:", {
-      imageDataUrl: imageDataUrl.substring(0, 50) + "...",
-      maskDataUrl: maskDataUrl.substring(0, 50) + "...",
-    })
-
-    // Simulate API processing time
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // For demo purposes, create a simple inpainted result
-    // In a real app, this would come from your API response
-    const outputCanvas = document.createElement("canvas")
-    const inputCanvas = inputCanvasRef.current
-    const maskCanvas = maskCanvasRef.current
-
-    if (!inputCanvas || !maskCanvas) throw new Error("Canvas không khả dụng")
-
-    outputCanvas.width = inputCanvas.width
-    outputCanvas.height = inputCanvas.height
-
-    const outputCtx = outputCanvas.getContext("2d")
-    if (!outputCtx) throw new Error("Không thể lấy ngữ cảnh đầu ra")
-
-    // Draw the original image
-    outputCtx.drawImage(image!, 0, 0, outputCanvas.width, outputCanvas.height)
-
-    // Apply a simple effect to masked areas (in a real app, this would be the inpainted result)
-    const maskCtx = maskCanvas.getContext("2d")
-    if (!maskCtx) throw new Error("Không thể lấy ngữ cảnh mặt nạ")
-
-    const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height)
-    const outputData = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height)
-
-    // Simple inpainting simulation - blur/change colors in masked areas
-    for (let i = 0; i < maskData.data.length; i += 4) {
-      if (maskData.data[i] > 0) {
-        // If mask is present at this pixel
-        // Create a "filled in" effect - this is just a simulation
-        // In a real app, this would be replaced by the actual inpainted result
-
-        // Invert colors in the masked area as a simple visual effect
-        outputData.data[i] = 255 - outputData.data[i] // R
-        outputData.data[i + 1] = 255 - outputData.data[i + 1] // G
-        outputData.data[i + 2] = 255 - outputData.data[i + 2] // B
-      }
-    }
-
-    outputCtx.putImageData(outputData, 0, 0)
-
-    // Set the inpainted image
-    setInpaintedImage(outputCanvas.toDataURL("image/png"))
-
-    // Display the result on the output canvas
-    const displayCanvas = outputCanvasRef.current
-    if (!displayCanvas) throw new Error("Canvas hiển thị không khả dụng")
-
-    const displayCtx = displayCanvas.getContext("2d")
-    if (!displayCtx) throw new Error("Không thể lấy ngữ cảnh hiển thị")
-
-    displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height)
-    displayCtx.drawImage(outputCanvas, 0, 0)
   }
 
   // Reset the mask
@@ -621,4 +581,3 @@ export default function ImageInpaintingApp() {
     </div>
   )
 }
-
