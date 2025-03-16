@@ -1,7 +1,7 @@
 {
   "functions": {
     "app/api/inpaint/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 30
     }
   }
 } 
