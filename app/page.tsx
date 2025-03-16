@@ -102,17 +102,15 @@ export default function ImageInpaintingApp() {
   const handleProductSelect = (productName: string) => {
     setSelectedProduct(productName)
 
-    // In a real application, you would load the product image
-    // For this demo, we'll use a placeholder
     const img = new window.Image()
     img.onload = () => {
       setImage(img)
       drawImageOnCanvas(img)
     }
 
-    // Try to use the actual product image path, fallback to placeholder
+    // Sử dụng ảnh sản phẩm thực tế
     const productPath = products[productName as keyof typeof products]
-    img.src = productPath || `/placeholder.svg?height=500&width=500&text=${encodeURIComponent(productName)}`
+    img.src = productPath
     img.crossOrigin = "anonymous"
   }
 
@@ -308,14 +306,15 @@ export default function ImageInpaintingApp() {
         })
       })
 
-      if (!response.ok) {
-        throw new Error(await response.text())
+      const responseData = await response.json()
+      console.log("Response from API:", responseData)
+
+      if (!response.ok || !responseData.inpaintedImage) {
+        throw new Error(responseData.error || "Invalid response from server")
       }
 
-      const { inpaintedImage } = await response.json()
-
       // Hiển thị kết quả
-      setInpaintedImage(inpaintedImage)
+      setInpaintedImage(responseData.inpaintedImage)
       const outputCanvas = outputCanvasRef.current
       if (outputCanvas) {
         const ctx = outputCanvas.getContext('2d')
@@ -325,7 +324,7 @@ export default function ImageInpaintingApp() {
             ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height)
             ctx.drawImage(img, 0, 0, outputCanvas.width, outputCanvas.height)
           }
-          img.src = inpaintedImage
+          img.src = responseData.inpaintedImage
         }
       }
     } catch (err) {
@@ -566,7 +565,7 @@ export default function ImageInpaintingApp() {
               <div className="mt-2">
                 <div className="flex items-center gap-1">
                   <Info className="h-3 w-3 text-blue-800/70" />
-                  <h3 className="text-xs font-medium text-blue-800">Hướng dẫn</h3>
+                  <h3 className="text-xs font-medium text-blue-800">Hướng dẫn sử dụng</h3>
                 </div>
                 <div className="bg-blue-50 p-2 rounded-md text-xs mt-1 text-blue-800">
                   <p>1. Chọn sản phẩm hoặc tải ảnh lên</p>
@@ -581,3 +580,4 @@ export default function ImageInpaintingApp() {
     </div>
   )
 }
+
