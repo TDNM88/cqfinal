@@ -119,17 +119,9 @@ export default function ImageInpaintingApp() {
   // Handle product selection
   const handleProductSelect = async (productName: string) => {
     setSelectedProduct(productName); // Cập nhật sản phẩm đã chọn
+    
     if (image) {
       try {
-        const maskCanvas = maskCanvasRef.current;
-        if (maskCanvas) {
-          const maskCtx = maskCanvas.getContext("2d");
-          if (maskCtx) {
-            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
-            console.log("Kiểm tra mask trước khi tạo ảnh kết hợp:", maskData.data); // Log dữ liệu mask
-          }
-        }
-
         // Tạo ảnh kết hợp (ảnh upload + mask trong suốt)
         const combinedImageData = await getCombinedImage();
 
@@ -142,8 +134,10 @@ export default function ImageInpaintingApp() {
           const inputCtx = inputCanvas.getContext("2d");
           if (!inputCtx) return;
 
-          // Vẽ ảnh kết hợp lên canvas
+          // Xóa canvas cũ
           inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
+
+          // Vẽ ảnh kết hợp lên canvas
           inputCtx.drawImage(combinedImg, 0, 0, inputCanvas.width, inputCanvas.height);
         };
         combinedImg.src = combinedImageData;
