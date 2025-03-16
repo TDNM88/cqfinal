@@ -115,44 +115,38 @@ async function createInpaintingJob(uploadedImageUrl: string, productImageUrl: st
 }
 
 // Hàm theo dõi tiến trình job
-async function pollJobStatus(jobId: string) {
-  const maxAttempts = 30;
-  const delay = 5000; // 5 seconds
+const pollJobStatus = async (jobId: string, timeout = 300000) => {
+  const startTime = Date.now();
+  const url = `${TENSOR_ART_API_URL}/jobs/${jobId}`;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  while (Date.now() - startTime < timeout) {
     try {
-      const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+
+      console.log("Kết nối WebSocket đang được thiết lập...");
+      console.log("Trạng thái job:", data.job.status);
+
+      if (data.job.status === 'completed') {
+        return data.job.resultUrl;
+      } else if (data.job.status === 'failed') {
+        throw new Error(`Job failed: ${data.job.failureInfo?.reason}`);
       }
 
-      const { job } = await response.json();
-
-      if (job.status === 'SUCCESS') {
-        if (job.successInfo?.images?.[0]?.url) {
-          return job.successInfo.images[0].url;
-        }
-        throw new Error('Kết quả không chứa URL hợp lệ');
-      }
-
-      if (job.status === 'FAILED') {
-        throw new Error(job.failedInfo?.reason || 'Job xử lý thất bại');
-      }
-
-      await new Promise(resolve => setTimeout(resolve, delay));
+      // Chờ 5 giây trước khi thử lại
+      await new Promise(resolve => setTimeout(resolve, 5000));
     } catch (error) {
-      console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error);
-      throw new Error(`Không thể lấy kết quả: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
+      throw new Error(`Không thể lấy kết quả: ${error.message}`);
     }
   }
 
-  throw new Error('Quá thời gian chờ xử lý job');
-}
+  throw new Error(`Request timed out after ${timeout / 1000} seconds`);
+};
 
 // Custom hook để xử lý inpainting
 export function useInpainting() {
