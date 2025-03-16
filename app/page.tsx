@@ -326,28 +326,28 @@ export default function ImageInpaintingApp() {
     try {
       setIsProcessing(true);
       setError(null);
-
-      // 1. Tạo ảnh kết hợp (ảnh người dùng upload + mask)
+  
+      // Tạo ảnh kết hợp
       const combinedImage = await getCombinedImage();
-
-      console.log('Ảnh kết hợp (node 731):', combinedImage);
-      console.log('Ảnh sản phẩm (node 735):', products[selectedProduct as keyof typeof products]);
-
-      // 2. Upload ảnh kết hợp và ảnh sản phẩm
-      const [combinedImageId, productImageId] = await Promise.all([
-        uploadImageToTensorArt(combinedImage), // Ảnh kết hợp gửi đến node 731
-        uploadImageToTensorArt(products[selectedProduct as keyof typeof products]) // Ảnh sản phẩm gửi đến node 735
+      const productImage = products[selectedProduct as keyof typeof products];
+  
+      console.log('Ảnh kết hợp (node 735):', combinedImage);
+      console.log('Ảnh sản phẩm (node 731):', productImage);
+  
+      // Upload ảnh
+      const [productImageId, combinedImageId] = await Promise.all([
+        uploadImageToTensorArt(productImage),
+        uploadImageToTensorArt(combinedImage),
       ]);
-
-      // 3. Tạo job xử lý và theo dõi tiến trình
-      const resultUrl = await processInpainting(combinedImageId, productImageId);
-
-      // 4. Cập nhật kết quả
-      setInpaintedImage(resultUrl);
+  
+      // Gửi đến workflow
+      const resultUrl = await processInpainting(productImageId, combinedImageId);
+  
+      // Cập nhật và hiển thị kết quả thứ 2
+      setInpaintedImage(resultUrl); // Sử dụng setInpaintedImage nếu bạn vẫn giữ biến này
       const img = new Image();
       img.onload = () => drawResultOnCanvas(img);
       img.src = resultUrl;
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lỗi không xác định');
     } finally {
@@ -433,10 +433,10 @@ export default function ImageInpaintingApp() {
     return response.json()
   }
 
-  const pollJobStatus = async (jobId: string): Promise<string> => {
+  async function pollJobStatus(jobId: string) {
     const maxAttempts = 30;
     const delay = 5000; // 5 seconds
-
+  
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
@@ -444,36 +444,35 @@ export default function ImageInpaintingApp() {
             'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
           }
         });
-
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+  
         const { job } = await response.json();
         
         if (job.status === 'SUCCESS') {
-          // Kiểm tra kỹ cấu trúc phản hồi
-          if (job.successInfo?.images?.[0]?.url) {
-            return job.successInfo.images[0].url;
+          if (job.successInfo?.images && job.successInfo.images.length >= 2) {
+            console.log("All result URLs:", job.successInfo.images.map(img => img.url));
+            return job.successInfo.images[1].url; // Lấy kết quả thứ 2
+          } else {
+            throw new Error('Kết quả không chứa đủ 2 URL hợp lệ');
           }
-          throw new Error('Kết quả không chứa URL hợp lệ');
         }
-
+  
         if (job.status === 'FAILED') {
           throw new Error(job.failedInfo?.reason || 'Job xử lý thất bại');
         }
-
-        // Nếu job chưa hoàn thành, đợi và thử lại
+  
         await new Promise(resolve => setTimeout(resolve, delay));
-        
       } catch (error) {
         console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error);
         throw new Error(`Không thể lấy kết quả: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
       }
     }
-
+  
     throw new Error('Quá thời gian chờ xử lý job');
-  };
+  }
 
   const handleMaskUpdate = () => {
     if (maskCanvasRef.current) {
