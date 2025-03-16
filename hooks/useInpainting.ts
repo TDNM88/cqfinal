@@ -76,7 +76,7 @@ async function createInpaintingJob(uploadedImageUrl: string, productImageUrl: st
             fieldValue: productImageUrl
           },
           {
-            nodeId: "736", // Node ảnh mask
+            nodeId: "745", // Node ảnh mask
             fieldName: "image",
             fieldValue: maskImageUrl
           }
