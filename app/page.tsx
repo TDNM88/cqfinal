@@ -484,29 +484,46 @@ export default function ImageInpaintingApp() {
   const getCombinedImage = async (): Promise<string> => {
     const inputCanvas = inputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
-
+  
     if (!inputCanvas || !maskCanvas || !image) {
       throw new Error('Không tìm thấy canvas hoặc ảnh');
     }
-
-    // Tạo một canvas tạm thời để kết hợp ảnh và mask
+  
+    // Tạo canvas tạm thời với cùng kích thước
     const combinedCanvas = document.createElement('canvas');
     combinedCanvas.width = inputCanvas.width;
     combinedCanvas.height = inputCanvas.height;
     const ctx = combinedCanvas.getContext('2d');
-
+  
     if (!ctx) {
       throw new Error('Không thể tạo context cho canvas');
     }
-
-    // Vẽ ảnh gốc lên canvas tạm thời
-    ctx.drawImage(inputCanvas, 0, 0);
-
-    // Vẽ mask lên canvas tạm thời với chế độ blend phù hợp
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.drawImage(maskCanvas, 0, 0);
-
-    // Chuyển canvas thành data URL (base64)
+  
+    // Vẽ ảnh gốc (RGB) lên canvas
+    ctx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
+  
+    // Lấy dữ liệu ảnh từ maskCanvas
+    const maskCtx = maskCanvas.getContext('2d');
+    if (!maskCtx) {
+      throw new Error('Không thể lấy context của mask');
+    }
+    const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    const maskData = maskImageData.data;
+  
+    // Lấy dữ liệu ảnh gốc từ inputCanvas
+    const inputImageData = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
+    const inputData = inputImageData.data;
+  
+    // Kết hợp mask vào kênh alpha
+    for (let i = 0; i < maskData.length; i += 4) {
+      const maskValue = maskData[i]; // Giá trị grayscale từ mask (0-255)
+      inputData[i + 3] = maskValue; // Gán vào kênh alpha (0 = trong suốt, 255 = opaque)
+    }
+  
+    // Đưa dữ liệu đã chỉnh sửa trở lại canvas
+    ctx.putImageData(inputImageData, 0, 0);
+  
+    // Xuất ảnh dưới dạng PNG (hỗ trợ kênh alpha)
     return combinedCanvas.toDataURL('image/png');
   };
 
