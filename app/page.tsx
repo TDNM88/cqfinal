@@ -106,21 +106,12 @@ export default function ImageInpaintingApp() {
     reader.readAsDataURL(file)
   }
 
-  // Handle product selection
   const handleProductSelect = (productName: string) => {
-    setSelectedProduct(productName)
-
-    const img = new window.Image()
-    img.onload = () => {
-      setImage(img)
-      drawImageOnCanvas(img)
+    setSelectedProduct(productName); // Cập nhật sản phẩm đã chọn
+    if (image) {
+      drawImageOnCanvas(image); // Hiển thị lại ảnh upload với mask đã vẽ
     }
-
-    // Sử dụng ảnh sản phẩm thực tế
-    const productPath = products[productName as keyof typeof products]
-    img.src = productPath
-    img.crossOrigin = "anonymous"
-  }
+  };
 
   // Save current canvas state
   const saveCanvasState = () => {
@@ -135,26 +126,50 @@ export default function ImageInpaintingApp() {
 
   // Draw uploaded image on input canvas and prepare mask canvas
   const drawImageOnCanvas = (img: HTMLImageElement) => {
-    const inputCanvas = inputCanvasRef.current
-    const outputCanvas = outputCanvasRef.current
-    const maskCanvas = maskCanvasRef.current
-
-    if (!inputCanvas || !outputCanvas || !maskCanvas) return
-
+    const inputCanvas = inputCanvasRef.current;
+    const outputCanvas = outputCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+  
+    if (!inputCanvas || !outputCanvas || !maskCanvas) return;
+  
     // Resize canvases to match image aspect ratio
-    const aspectRatio = img.width / img.height
-    const maxWidth = inputCanvas.parentElement?.clientWidth || 500
-    const maxHeight = inputCanvas.parentElement?.clientHeight || 500
-
-    let canvasWidth, canvasHeight
-
+    const aspectRatio = img.width / img.height;
+    const maxWidth = inputCanvas.parentElement?.clientWidth || 500;
+    const maxHeight = inputCanvas.parentElement?.clientHeight || 500;
+  
+    let canvasWidth, canvasHeight;
+  
     if (aspectRatio > 1) {
-      canvasWidth = Math.min(maxWidth, img.width)
-      canvasHeight = canvasWidth / aspectRatio
+      canvasWidth = Math.min(maxWidth, img.width);
+      canvasHeight = canvasWidth / aspectRatio;
     } else {
-      canvasHeight = Math.min(maxHeight, img.height)
-      canvasWidth = canvasHeight * aspectRatio
+      canvasHeight = Math.min(maxHeight, img.height);
+      canvasWidth = canvasHeight * aspectRatio;
     }
+  
+    // Set canvas dimensions
+    inputCanvas.width = canvasWidth;
+    inputCanvas.height = canvasHeight;
+    outputCanvas.width = canvasWidth;
+    outputCanvas.height = canvasHeight;
+    maskCanvas.width = canvasWidth;
+    maskCanvas.height = canvasHeight;
+  
+    // Draw image on input canvas
+    const inputCtx = inputCanvas.getContext("2d");
+    if (inputCtx) {
+      inputCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    }
+  
+    // Clear the mask canvas
+    const maskCtx = maskCanvas.getContext("2d");
+    if (maskCtx) {
+      maskCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    }
+  
+    // Draw information on output canvas
+    drawInformationOnOutputCanvas();
+  };
 
     // Set canvas dimensions
     inputCanvas.width = canvasWidth
@@ -252,39 +267,38 @@ export default function ImageInpaintingApp() {
 
   // Update the input canvas to show the image with mask overlay
   const updateMaskPreview = () => {
-    const inputCanvas = inputCanvasRef.current
-    const maskCanvas = maskCanvasRef.current
-    if (!inputCanvas || !maskCanvas || !image) return
-
-    const inputCtx = inputCanvas.getContext("2d")
-    if (!inputCtx) return
-
+    const inputCanvas = inputCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!inputCanvas || !maskCanvas || !image) return;
+  
+    const inputCtx = inputCanvas.getContext("2d");
+    if (!inputCtx) return;
+  
     // Redraw original image
-    inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height)
-    inputCtx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height)
-
-    // Overlay mask with red color
-    inputCtx.save()
-    inputCtx.globalAlpha = maskOpacity
-    inputCtx.globalCompositeOperation = "source-over"
-    inputCtx.fillStyle = "rgba(255,0,0,1)"
-
-    // Use the mask as a clipping path
-    const maskCtx = maskCanvas.getContext("2d")
-    if (!maskCtx) return
-
-    const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height)
-    const tempCanvas = document.createElement("canvas")
-    tempCanvas.width = maskCanvas.width
-    tempCanvas.height = maskCanvas.height
-    const tempCtx = tempCanvas.getContext("2d")
-    if (!tempCtx) return
-
-    tempCtx.putImageData(maskData, 0, 0)
-    inputCtx.drawImage(tempCanvas, 0, 0)
-
-    inputCtx.restore()
-  }
+    inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
+    inputCtx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
+  
+    // Overlay mask with red color for preview
+    inputCtx.save();
+    inputCtx.globalAlpha = maskOpacity;
+    inputCtx.globalCompositeOperation = "source-over";
+    inputCtx.fillStyle = "rgba(255,0,0,1)";
+  
+    const maskCtx = maskCanvas.getContext("2d");
+    if (!maskCtx) return;
+  
+    const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = maskCanvas.width;
+    tempCanvas.height = maskCanvas.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    if (!tempCtx) return;
+  
+    tempCtx.putImageData(maskData, 0, 0);
+    inputCtx.drawImage(tempCanvas, 0, 0);
+  
+    inputCtx.restore();
+  };
 
   // Thêm hàm drawResultOnCanvas
   const drawResultOnCanvas = (img: HTMLImageElement) => {
@@ -327,8 +341,15 @@ export default function ImageInpaintingApp() {
       setIsProcessing(true);
       setError(null);
   
-      // Tạo ảnh kết hợp
+      // Tạo ảnh kết hợp từ ảnh upload và mask
       const combinedImage = await getCombinedImage();
+  
+      // Kiểm tra xem đã chọn sản phẩm chưa
+      if (!selectedProduct) {
+        throw new Error('Vui lòng chọn một sản phẩm trước khi xử lý');
+      }
+  
+      // Lấy ảnh sản phẩm (chỉ dùng để gửi API)
       const productImage = products[selectedProduct as keyof typeof products];
   
       console.log('Ảnh kết hợp (node 735):', combinedImage);
@@ -336,15 +357,15 @@ export default function ImageInpaintingApp() {
   
       // Upload ảnh
       const [productImageId, combinedImageId] = await Promise.all([
-        uploadImageToTensorArt(productImage),
-        uploadImageToTensorArt(combinedImage),
+        uploadImageToTensorArt(productImage), // Gửi ảnh sản phẩm cho node 731
+        uploadImageToTensorArt(combinedImage), // Gửi ảnh kết hợp cho node 735
       ]);
   
-      // Gửi đến workflow
+      // Gửi đến workflow và lấy kết quả thứ 2
       const resultUrl = await processInpainting(productImageId, combinedImageId);
   
-      // Cập nhật và hiển thị kết quả thứ 2
-      setInpaintedImage(resultUrl); // Sử dụng setInpaintedImage nếu bạn vẫn giữ biến này
+      // Cập nhật và hiển thị kết quả
+      setInpaintedImage(resultUrl);
       const img = new Image();
       img.onload = () => drawResultOnCanvas(img);
       img.src = resultUrl;
