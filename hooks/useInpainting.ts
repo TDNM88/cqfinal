@@ -52,7 +52,7 @@ async function uploadImageToTensorArt(imageData: string) {
 }
 
 // Hàm tạo job xử lý ảnh
-async function createInpaintingJob(productImageUrl: string, maskedImageUrl: string) {
+async function createInpaintingJob(uploadedImageUrl: string, productImageUrl: string, maskImageUrl: string) {
   const url = `${TENSOR_ART_API_URL}/jobs/workflow/template`
   const controller = new AbortController()
   const timeout = 180000 // 3 phút
@@ -66,18 +66,25 @@ async function createInpaintingJob(productImageUrl: string, maskedImageUrl: stri
       fields: {
         fieldAttrs: [
           {
-            nodeId: "731", // Node hình ảnh sản phẩm
+            nodeId: "731", // Node ảnh người dùng upload
+            fieldName: "image",
+            fieldValue: uploadedImageUrl
+          },
+          {
+            nodeId: "735", // Node ảnh sản phẩm
             fieldName: "image",
             fieldValue: productImageUrl
           },
           {
-            nodeId: "735", // Node hình ảnh đã gán mask
+            nodeId: "736", // Node ảnh mask
             fieldName: "image",
-            fieldValue: maskedImageUrl
+            fieldValue: maskImageUrl
           }
         ]
       }
     }
+
+    console.log("Dữ liệu gửi lên API:", workflowData)
 
     const response = await fetch(url, {
       method: 'POST',
@@ -153,13 +160,13 @@ export function useInpainting() {
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
 
-  const processInpainting = async (imageId: string, maskId: string) => {
+  const processInpainting = async (uploadedImageId: string, productImageId: string, maskImageId: string) => {
     setLoading(true);
     setError(null);
     setResultUrl(null);
 
     try {
-      const jobResponse = await createInpaintingJob(imageId, maskId);
+      const jobResponse = await createInpaintingJob(uploadedImageId, productImageId, maskImageId);
 
       if (!jobResponse.job?.id) {
         throw new Error('Không nhận được ID job từ API');
