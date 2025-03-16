@@ -322,37 +322,38 @@ export default function ImageInpaintingApp() {
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      setIsProcessing(true)
-      setError(null)
-      
-      // 1. Tạo ảnh kết hợp (ảnh gốc + mask)
-      const combinedImage = await getCombinedImage()
+      setIsProcessing(true);
+      setError(null);
 
-      console.log('Ảnh kết hợp (ảnh + mask):', combinedImage);
+      // 1. Tạo ảnh kết hợp (ảnh người dùng upload + mask)
+      const combinedImage = await getCombinedImage();
 
-      // 2. Upload ảnh kết hợp và mask
-      const [imageId, maskId] = await Promise.all([
-        uploadImageToTensorArt(combinedImage),
-        uploadImageToTensorArt(maskData)
-      ])
+      console.log('Ảnh kết hợp (node 731):', combinedImage);
+      console.log('Ảnh sản phẩm (node 735):', products[selectedProduct as keyof typeof products]);
+
+      // 2. Upload ảnh kết hợp và ảnh sản phẩm
+      const [combinedImageId, productImageId] = await Promise.all([
+        uploadImageToTensorArt(combinedImage), // Ảnh kết hợp gửi đến node 731
+        uploadImageToTensorArt(products[selectedProduct as keyof typeof products]) // Ảnh sản phẩm gửi đến node 735
+      ]);
 
       // 3. Tạo job xử lý và theo dõi tiến trình
-      const resultUrl = await processInpainting(imageId, maskId)
-      
+      const resultUrl = await processInpainting(combinedImageId, productImageId);
+
       // 4. Cập nhật kết quả
-      setInpaintedImage(resultUrl)
-      const img = new Image()
-      img.onload = () => drawResultOnCanvas(img)
-      img.src = resultUrl
+      setInpaintedImage(resultUrl);
+      const img = new Image();
+      img.onload = () => drawResultOnCanvas(img);
+      img.src = resultUrl;
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lỗi không xác định')
+      setError(err instanceof Error ? err.message : 'Lỗi không xác định');
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   // Reset the mask
   const resetMask = () => {
