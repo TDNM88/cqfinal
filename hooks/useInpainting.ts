@@ -14,9 +14,6 @@ async function uploadImageToTensorArt(imageData: string) {
   }
 
   try {
-    // Lưu ảnh trước khi upload
-    await saveImageToTempFolder(imageData, `upload_${Date.now()}.png`);
-
     const resourceRes = await fetch(url, {
       method: 'POST',
       headers,
@@ -112,8 +109,8 @@ async function createInpaintingJob(productImageUrl: string, maskedImageUrl: stri
 
 // Hàm theo dõi tiến trình job
 async function pollJobStatus(jobId: string) {
-  const maxAttempts = 30
-  const delay = 5000 // 5 seconds
+  const maxAttempts = 30;
+  const delay = 5000; // 5 seconds
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -121,82 +118,64 @@ async function pollJobStatus(jobId: string) {
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
         }
-      })
-      
+      });
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const { job } = await response.json()
-      
+      const { job } = await response.json();
+
       if (job.status === 'SUCCESS') {
         if (job.successInfo?.images?.[0]?.url) {
-          return job.successInfo.images[0].url
+          return job.successInfo.images[0].url;
         }
-        throw new Error('Kết quả không chứa URL hợp lệ')
+        throw new Error('Kết quả không chứa URL hợp lệ');
       }
 
       if (job.status === 'FAILED') {
-        throw new Error(job.failedInfo?.reason || 'Job xử lý thất bại')
+        throw new Error(job.failedInfo?.reason || 'Job xử lý thất bại');
       }
 
-      await new Promise(resolve => setTimeout(resolve, delay))
+      await new Promise(resolve => setTimeout(resolve, delay));
     } catch (error) {
-      console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error)
-      throw new Error(`Không thể lấy kết quả: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`)
+      console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error);
+      throw new Error(`Không thể lấy kết quả: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
     }
   }
 
-  throw new Error('Quá thời gian chờ xử lý job')
+  throw new Error('Quá thời gian chờ xử lý job');
 }
 
 // Custom hook để xử lý inpainting
 export function useInpainting() {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [resultUrl, setResultUrl] = useState<string | null>(null);
-  
-    const saveImageToTempFolder = async (imageData: string, fileName: string) => {
-      try {
-        const response = await fetch(imageData);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `public/temp/${fileName}`;
-        link.click();
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error('Lỗi khi lưu ảnh:', err);
-      }
-    };
-  
-    const processInpainting = async (imageId: string, maskId: string) => {
-      setLoading(true);
-      setError(null);
-      setResultUrl(null);
-  
-      try {
-        const jobResponse = await createInpaintingJob(imageId, maskId);
-        
-        if (!jobResponse.job?.id) {
-          throw new Error('Không nhận được ID job từ API');
-        }
-  
-        const resultUrl = await pollJobStatus(jobResponse.job.id);
-        setResultUrl(resultUrl);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
 
-        // Lưu ảnh kết quả vào thư mục tạm
-        await saveImageToTempFolder(resultUrl, `result_${Date.now()}.png`);
+  const processInpainting = async (imageId: string, maskId: string) => {
+    setLoading(true);
+    setError(null);
+    setResultUrl(null);
 
-        return resultUrl;
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'Lỗi không xác định');
-        throw error;
-      } finally {
-        setLoading(false);
+    try {
+      const jobResponse = await createInpaintingJob(imageId, maskId);
+
+      if (!jobResponse.job?.id) {
+        throw new Error('Không nhận được ID job từ API');
       }
-    };
-  
-    return { loading, error, resultUrl, processInpainting };
-  }
+
+      const resultUrl = await pollJobStatus(jobResponse.job.id);
+      setResultUrl(resultUrl);
+
+      return resultUrl;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Lỗi không xác định');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { loading, error, resultUrl, processInpainting };
+}

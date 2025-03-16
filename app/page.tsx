@@ -373,6 +373,45 @@ export default function ImageInpaintingApp() {
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
   };
 
+  const addWatermark = async (imageUrl: string): Promise<string> => {
+    const img = new Image();
+    img.src = imageUrl;
+    await img.decode();
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      throw new Error("Không thể tạo context cho canvas");
+    }
+
+    // Vẽ ảnh kết quả lên canvas
+    ctx.drawImage(img, 0, 0);
+
+    // Tải logo
+    const logo = new Image();
+    logo.src = "/logo.png";
+    await logo.decode();
+
+    // Tính toán vị trí đặt logo (chính giữa)
+    const logoX = (img.width - logo.width) / 2;
+    const logoY = (img.height - logo.height) / 2;
+
+    // Đặt độ mờ 50%
+    ctx.globalAlpha = 0.5;
+
+    // Vẽ logo lên ảnh
+    ctx.drawImage(logo, logoX, logoY, logo.width, logo.height);
+
+    // Reset độ mờ
+    ctx.globalAlpha = 1.0;
+
+    // Trả về ảnh đã được watermark dưới dạng base64
+    return canvas.toDataURL("image/png");
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -380,8 +419,8 @@ export default function ImageInpaintingApp() {
       setIsProcessing(true);
       setError(null);
 
-      // Tạo ảnh kết hợp từ ảnh upload và mask
-      const combinedImage = await getCombinedImage();
+      // Tạo ảnh mask trắng đen
+      const maskImage = await getCombinedImage();
 
       // Kiểm tra xem đã chọn sản phẩm chưa
       if (!selectedProduct) {
@@ -391,23 +430,28 @@ export default function ImageInpaintingApp() {
       // Lấy ảnh sản phẩm (chỉ dùng để gửi API)
       const productImage = products[selectedProduct as keyof typeof products];
 
-      console.log("Ảnh kết hợp (node 735):", combinedImage);
-      console.log("Ảnh sản phẩm (node 731):", productImage);
+      console.log("Ảnh kết hợp (node 736):", maskImage);
+      console.log("Ảnh sản phẩm (node 735):", productImage);
+      console.log("Ảnh upload (node 731):", imageData);
 
       // Upload ảnh
-      const [productImageId, combinedImageId] = await Promise.all([
-        uploadImageToTensorArt(productImage), // Gửi ảnh sản phẩm cho node 731
-        uploadImageToTensorArt(combinedImage), // Gửi ảnh kết hợp cho node 735
+      const [productImageId, maskImageId, uploadedImageId] = await Promise.all([
+        uploadImageToTensorArt(productImage), // Gửi ảnh sản phẩm cho node 735
+        uploadImageToTensorArt(maskImage), // Gửi ảnh mask cho node 736
+        uploadImageToTensorArt(imageData), // Gửi ảnh upload cho node 731
       ]);
 
       // Gửi đến workflow và lấy kết quả thứ 2
-      const resultUrl = await processInpainting(productImageId, combinedImageId);
+      const resultUrl = await processInpainting(productImageId, maskImageId, uploadedImageId);
+
+      // Thêm watermark vào ảnh kết quả
+      const watermarkedImageUrl = await addWatermark(resultUrl);
 
       // Cập nhật và hiển thị kết quả
-      setInpaintedImage(resultUrl);
+      setInpaintedImage(watermarkedImageUrl);
       const img = new Image();
       img.onload = () => drawResultOnCanvas(img);
-      img.src = resultUrl;
+      img.src = watermarkedImageUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lỗi không xác định");
     } finally {
@@ -450,25 +494,43 @@ export default function ImageInpaintingApp() {
   };
 
   const uploadImageToTensorArt = async (imageData: string) => {
-    const response = await fetch(`${TENSOR_ART_API_URL}/resource/image`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
-      },
-      body: JSON.stringify({ expireSec: 7200 }),
-    });
+    try {
+      const response = await fetch(`${TENSOR_ART_API_URL}/resource/image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
+        },
+        body: JSON.stringify({ expireSec: 7200 }),
+      });
 
-    const data = await response.json();
-    const imageBlob = await fetch(imageData).then((res) => res.blob());
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    await fetch(data.putUrl, {
-      method: "PUT",
-      headers: data.headers,
-      body: imageBlob,
-    });
+      const data = await response.json();
+      const imageBlob = await fetch(imageData).then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch image: ${res.statusText}`);
+        }
+        return res.blob();
+      });
 
-    return data.resourceId;
+      const uploadResponse = await fetch(data.putUrl, {
+        method: "PUT",
+        headers: data.headers,
+        body: imageBlob,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
+      }
+
+      return data.resourceId;
+    } catch (error) {
+      console.error("Lỗi khi upload ảnh lên Tensor Art:", error);
+      throw error;
+    }
   };
 
   const createInpaintingJob = async (imageId: string, maskId: string) => {
@@ -571,27 +633,31 @@ export default function ImageInpaintingApp() {
     const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const maskData = maskImageData.data;
 
-    // Lấy dữ liệu ảnh gốc từ combinedCanvas
-    const inputImageData = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
-    const inputData = inputImageData.data;
+    // Tạo ảnh mask trắng đen
+    const maskCanvasBW = document.createElement("canvas");
+    maskCanvasBW.width = inputCanvas.width;
+    maskCanvasBW.height = inputCanvas.height;
+    const maskCtxBW = maskCanvasBW.getContext("2d");
 
-    // Kiểm tra và áp dụng mask vào kênh alpha
+    if (!maskCtxBW) {
+      throw new Error("Không thể tạo context cho mask BW");
+    }
+
+    // Vẽ mask trắng đen
     for (let i = 0; i < maskData.length; i += 4) {
       const maskValue = maskData[i]; // Giá trị grayscale từ mask (0-255)
       if (maskValue > 0) {
-        // Vùng trắng (mask): làm trong suốt hoàn toàn
-        inputData[i + 3] = 0; // Alpha = 0
+        // Vùng trắng (mask)
+        maskCtxBW.fillStyle = "white";
       } else {
-        // Vùng đen (không mask): giữ nguyên
-        inputData[i + 3] = 255; // Alpha = 255
+        // Vùng đen (không mask)
+        maskCtxBW.fillStyle = "black";
       }
+      maskCtxBW.fillRect((i / 4) % inputCanvas.width, Math.floor((i / 4) / inputCanvas.width), 1, 1);
     }
 
-    // Đưa dữ liệu đã chỉnh sửa trở lại canvas
-    ctx.putImageData(inputImageData, 0, 0);
-
     // Xuất ảnh và log để kiểm tra
-    const result = combinedCanvas.toDataURL("image/png");
+    const result = maskCanvasBW.toDataURL("image/png");
     console.log("Kiểm tra ảnh kết hợp:", result); // Mở URL này trong trình duyệt
     return result;
   };
