@@ -289,7 +289,30 @@ export default function ImageInpaintingApp() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await processInpainting(imageData, maskData)
+    try {
+      setIsProcessing(true)
+      setError(null)
+      
+      // 1. Upload ảnh và mask
+      const [imageId, maskId] = await Promise.all([
+        uploadImageToTensorArt(imageData),
+        uploadImageToTensorArt(maskData)
+      ])
+
+      // 2. Tạo job xử lý và theo dõi tiến trình
+      const resultUrl = await processInpainting(imageId, maskId)
+      
+      // 3. Cập nhật kết quả
+      setInpaintedImage(resultUrl)
+      const img = new Image()
+      img.onload = () => drawResultOnCanvas(img)
+      img.src = resultUrl
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Lỗi không xác định')
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   // Reset the mask
@@ -324,36 +347,6 @@ export default function ImageInpaintingApp() {
     link.download = "ket-qua-xu-ly.png"
     link.href = inpaintedImage
     link.click()
-  }
-
-  const processInpainting = async () => {
-    try {
-      setIsProcessing(true)
-      setError(null)
-      
-      // 1. Upload ảnh và mask
-      const [imageId, maskId] = await Promise.all([
-        uploadImageToTensorArt(imageData),
-        uploadImageToTensorArt(maskData)
-      ])
-
-      // 2. Tạo job xử lý
-      const jobResponse = await createInpaintingJob(imageId, maskId)
-      
-      // 3. Theo dõi tiến trình
-      const resultUrl = await pollJobStatus(jobResponse.job.id)
-      
-      // 4. Cập nhật kết quả
-      setInpaintedImage(resultUrl)
-      const img = new Image()
-      img.onload = () => drawResultOnCanvas(img)
-      img.src = resultUrl
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lỗi không xác định')
-    } finally {
-      setIsProcessing(false)
-    }
   }
 
   const uploadImageToTensorArt = async (imageData: string) => {
@@ -538,7 +531,7 @@ export default function ImageInpaintingApp() {
               </Tabs>
 
               <Button
-                onClick={processInpainting}
+                onClick={handleSubmit}
                 disabled={!image || isProcessing}
                 className="flex items-center gap-2 mt-2 bg-blue-800 hover:bg-blue-900"
                 size="sm"
