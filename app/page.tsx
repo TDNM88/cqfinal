@@ -393,21 +393,47 @@ export default function ImageInpaintingApp() {
     return response.json()
   }
 
-  const pollJobStatus = async (jobId: string) => {
-    for (let i = 0; i < 30; i++) {
-      const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
+  const pollJobStatus = async (jobId: string): Promise<string> => {
+    const maxAttempts = 30;
+    const delay = 5000; // 5 seconds
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      })
-      
-      const { job } = await response.json()
-      if (job.status === 'SUCCESS') return job.successInfo.images[0].url
-      if (job.status === 'FAILED') throw new Error(job.failedInfo?.reason)
-      await new Promise(resolve => setTimeout(resolve, 5000))
+
+        const { job } = await response.json();
+        
+        if (job.status === 'SUCCESS') {
+          // Kiểm tra kỹ cấu trúc phản hồi
+          if (job.successInfo?.images?.[0]?.url) {
+            return job.successInfo.images[0].url;
+          }
+          throw new Error('Kết quả không chứa URL hợp lệ');
+        }
+
+        if (job.status === 'FAILED') {
+          throw new Error(job.failedInfo?.reason || 'Job xử lý thất bại');
+        }
+
+        // Nếu job chưa hoàn thành, đợi và thử lại
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+      } catch (error) {
+        console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error);
+        throw new Error(`Không thể lấy kết quả: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
+      }
     }
-    throw new Error('Timeout')
-  }
+
+    throw new Error('Quá thời gian chờ xử lý job');
+  };
 
   const handleMaskUpdate = () => {
     if (maskCanvasRef.current) {
