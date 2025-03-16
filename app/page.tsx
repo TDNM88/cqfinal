@@ -499,7 +499,7 @@ export default function ImageInpaintingApp() {
       throw new Error('Không thể tạo context cho canvas');
     }
   
-    // Vẽ ảnh gốc (RGB) lên canvas
+    // Vẽ ảnh gốc lên canvas
     ctx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
   
     // Lấy dữ liệu ảnh từ maskCanvas
@@ -510,14 +510,20 @@ export default function ImageInpaintingApp() {
     const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const maskData = maskImageData.data;
   
-    // Lấy dữ liệu ảnh gốc từ inputCanvas
+    // Lấy dữ liệu ảnh gốc từ combinedCanvas
     const inputImageData = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
     const inputData = inputImageData.data;
   
-    // Kết hợp mask vào kênh alpha
+    // Áp dụng mask vào kênh alpha: vùng trắng (mask) = trong suốt, vùng đen = giữ nguyên
     for (let i = 0; i < maskData.length; i += 4) {
       const maskValue = maskData[i]; // Giá trị grayscale từ mask (0-255)
-      inputData[i + 3] = maskValue; // Gán vào kênh alpha (0 = trong suốt, 255 = opaque)
+      if (maskValue > 0) {
+        // Vùng trắng (mask): làm trong suốt hoàn toàn
+        inputData[i + 3] = 0; // Alpha = 0
+      } else {
+        // Vùng đen (không mask): giữ nguyên
+        inputData[i + 3] = 255; // Alpha = 255
+      }
     }
   
     // Đưa dữ liệu đã chỉnh sửa trở lại canvas
