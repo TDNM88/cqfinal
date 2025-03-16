@@ -566,7 +566,7 @@ export default function ImageInpaintingApp() {
               <div className="mt-2">
                 <div className="flex items-center gap-1">
                   <Info className="h-3 w-3 text-blue-800/70" />
-                  <h3 className="text-xs font-medium text-blue-800">Hướng dẫn sử dụng</h3>
+                  <h3 className="text-xs font-medium text-blue-800">Hướng dẫn</h3>
                 </div>
                 <div className="bg-blue-50 p-2 rounded-md text-xs mt-1 text-blue-800">
                   <p>1. Chọn sản phẩm hoặc tải ảnh lên</p>
