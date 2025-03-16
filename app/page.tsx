@@ -10,6 +10,7 @@ import { Upload, Download, Eraser, Paintbrush, Loader2, Info, Send, RefreshCw, S
 import { Card } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useInpainting } from '../hooks/useInpainting'
 
 // Product data
 const products = {
@@ -51,6 +52,9 @@ export default function ImageInpaintingApp() {
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
+  const [imageData, setImageData] = useState('')
+  const [maskData, setMaskData] = useState('')
+  const { loading, resultUrl, processInpainting } = useInpainting()
 
   const inputCanvasRef = useRef<HTMLCanvasElement>(null)
   const outputCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -277,62 +281,10 @@ export default function ImageInpaintingApp() {
     inputCtx.restore()
   }
 
-  // Process inpainting
-  const processInpainting = async () => {
-    if (!image || !maskCanvasRef.current) return
-
-    setIsProcessing(true)
-    setError(null)
-
-    try {
-      const maskCanvas = maskCanvasRef.current
-      const inputCanvas = inputCanvasRef.current
-
-      if (!inputCanvas) throw new Error("Không thể lấy canvas đầu vào")
-
-      // Chuyển đổi canvas thành data URLs
-      const imageDataUrl = inputCanvas.toDataURL("image/png")
-      const maskDataUrl = maskCanvas.toDataURL("image/png")
-
-      // Gọi API thực tế
-      const response = await fetch('/api/inpaint', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: imageDataUrl,
-          maskData: maskDataUrl
-        })
-      })
-
-      const responseData = await response.json()
-      console.log("Response from API:", responseData)
-
-      if (!response.ok || !responseData.inpaintedImage) {
-        throw new Error(responseData.error || "Invalid response from server")
-      }
-
-      // Hiển thị kết quả
-      setInpaintedImage(responseData.inpaintedImage)
-      const outputCanvas = outputCanvasRef.current
-      if (outputCanvas) {
-        const ctx = outputCanvas.getContext('2d')
-        if (ctx) {
-          const img = new Image()
-          img.onload = () => {
-            ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height)
-            ctx.drawImage(img, 0, 0, outputCanvas.width, outputCanvas.height)
-          }
-          img.src = responseData.inpaintedImage
-        }
-      }
-    } catch (err) {
-      console.error("Lỗi xử lý ảnh:", err)
-      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định")
-    } finally {
-      setIsProcessing(false)
-    }
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await processInpainting(imageData, maskData)
   }
 
   // Reset the mask
