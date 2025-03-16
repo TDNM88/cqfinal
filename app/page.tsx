@@ -21,6 +21,8 @@ import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useInpainting } from "../hooks/useInpainting";
+import fs from 'fs';
+import path from 'path';
 
 // Product data
 const products = {
@@ -54,6 +56,23 @@ const products = {
 
 const TENSOR_ART_API_URL = "https://ap-east-1.tensorart.cloud/v1";
 const WORKFLOW_TEMPLATE_ID = "837405094118019506";
+
+// Hàm xóa thư mục tạm
+const deleteTempFolder = () => {
+  const tempFolderPath = path.join(process.cwd(), 'public', 'temp');
+  if (fs.existsSync(tempFolderPath)) {
+    fs.rmdirSync(tempFolderPath, { recursive: true });
+    console.log('Đã xóa thư mục tạm');
+  }
+};
+
+const ensureTempFolderExists = () => {
+  const tempFolderPath = path.join(process.cwd(), 'public', 'temp');
+  if (!fs.existsSync(tempFolderPath)) {
+    fs.mkdirSync(tempFolderPath, { recursive: true });
+    console.log('Đã tạo thư mục tạm');
+  }
+};
 
 export default function ImageInpaintingApp() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -91,12 +110,18 @@ export default function ImageInpaintingApp() {
     // Create an offscreen canvas for the mask
     const maskCanvas = document.createElement("canvas");
     maskCanvasRef.current = maskCanvas;
+
+    ensureTempFolderExists();
   }, []);
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Xóa thư mục tạm trước khi upload ảnh mới
+    deleteTempFolder();
+    ensureTempFolderExists();
 
     // Reset states
     setInpaintedImage(null);
