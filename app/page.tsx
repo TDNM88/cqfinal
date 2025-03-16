@@ -609,11 +609,11 @@ export default function ImageInpaintingApp() {
         const { job } = await response.json();
 
         if (job.status === "SUCCESS") {
-          if (job.successInfo?.images && job.successInfo.images.length >= 2) {
+          if (job.successInfo?.images && job.successInfo.images.length >= 1) {
             console.log("All result URLs:", job.successInfo.images.map((img) => img.url));
-            return job.successInfo.images[1].url; // Lấy kết quả thứ 2
+            return job.successInfo.images[0].url; // Lấy kết quả đầu tiên
           } else {
-            throw new Error("Kết quả không chứa đủ 2 URL hợp lệ");
+            throw new Error("Kết quả không chứa URL hợp lệ");
           }
         }
 
