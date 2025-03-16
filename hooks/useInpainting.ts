@@ -128,11 +128,14 @@ const pollJobStatus = async (jobId: string, timeout = 300000) => {
       });
 
       const data = await response.json();
-
-      console.log("Kết nối WebSocket đang được thiết lập...");
+      console.log("Job ID:", jobId);
       console.log("Trạng thái job:", data.job.status);
+      console.log("Kết quả trả về:", data.job.resultUrl);
 
-      if (data.job.status === 'completed') {
+      if (data.job.status === 'SUCCESS') {
+        if (!data.job.resultUrl) {
+          throw new Error("Job hoàn thành nhưng không có URL kết quả");
+        }
         return data.job.resultUrl;
       } else if (data.job.status === 'failed') {
         throw new Error(`Job failed: ${data.job.failureInfo?.reason}`);
