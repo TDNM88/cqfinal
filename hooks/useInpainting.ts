@@ -149,33 +149,32 @@ async function pollJobStatus(jobId: string) {
 
 // Custom hook để xử lý inpainting
 export function useInpainting() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [resultUrl, setResultUrl] = useState<string | null>(null)
-
-  const processInpainting = async (imageId: string, maskId: string) => {
-    setLoading(true)
-    setError(null)
-    setResultUrl(null)
-
-    try {
-      const jobResponse = await createInpaintingJob(imageId, maskId)
-      
-      if (!jobResponse.job?.id) {
-        throw new Error('Không nhận được ID job từ API')
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [resultUrl, setResultUrl] = useState<string | null>(null); // Chỉ lưu 1 URL
+  
+    const processInpainting = async (imageId: string, maskId: string) => {
+      setLoading(true);
+      setError(null);
+      setResultUrl(null);
+  
+      try {
+        const jobResponse = await createInpaintingJob(imageId, maskId);
+        
+        if (!jobResponse.job?.id) {
+          throw new Error('Không nhận được ID job từ API');
+        }
+  
+        const resultUrl = await pollJobStatus(jobResponse.job.id);
+        setResultUrl(resultUrl); // Lưu kết quả thứ 2
+        return resultUrl;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Lỗi không xác định');
+        throw error;
+      } finally {
+        setLoading(false);
       }
-
-      const resultUrl = await pollJobStatus(jobResponse.job.id)
-      
-      setResultUrl(resultUrl)
-      return resultUrl
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Lỗi không xác định')
-      throw error
-    } finally {
-      setLoading(false)
-    }
+    };
+  
+    return { loading, error, resultUrl, processInpainting };
   }
-
-  return { loading, error, resultUrl, processInpainting }
-} 
