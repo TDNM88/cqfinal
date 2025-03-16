@@ -10,6 +10,7 @@ interface APIError {
   message: string
 }
 
+// Hàm upload ảnh lên TensorArt
 async function uploadImageToTensorArt(imageData: string) {
   const url = `${TENSOR_ART_API_URL}/resource/image`
   const headers = {
@@ -18,39 +19,55 @@ async function uploadImageToTensorArt(imageData: string) {
     'Authorization': `Bearer ${process.env.TENSOR_ART_API_KEY}`
   }
 
-  // Tạo resource mới
-  const resourceRes = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ expireSec: 7200 }),
-  })
-  const { putUrl, resourceId } = await resourceRes.json()
-
-  // Thêm validation
-  if (!putUrl || !resourceId) {
-    const error: APIError = {
-      code: 500,
-      message: "Invalid response from TensorArt API"
+  try {
+    // Tạo resource mới
+    const resourceRes = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ expireSec: 7200 }),
+    })
+    const responseText = await resourceRes.text()
+    if (!resourceRes.ok) {
+      throw new Error(`POST failed: ${resourceRes.status} - ${responseText}`)
     }
+    const resourceResponse = JSON.parse(responseText)
+    const putUrl = resourceResponse.putUrl as string
+    const resourceId = resourceResponse.resourceId as string
+    const putHeaders = (resourceResponse.headers as Record<string, string>) || { 'Content-Type': 'image/png' }
+
+    // Thêm validation
+    if (!putUrl || !resourceId) {
+      throw new Error(`Invalid response: ${JSON.stringify(resourceResponse)}`)
+    }
+
+    // Upload ảnh thực tế
+    const imageBlob = await fetch(imageData).then(res => res.blob())
+    const putResponse = await fetch(putUrl, {
+      method: 'PUT',
+      headers: putHeaders,
+      body: imageBlob,
+    })
+
+    if (![200, 203].includes(putResponse.status)) {
+      throw new Error(`PUT failed: ${putResponse.status} - ${await putResponse.text()}`)
+    }
+
+    // Đợi 10 giây để đảm bảo ảnh được upload thành công
+    await new Promise((resolve) => setTimeout(resolve, 10000))
+
+    return resourceId
+  } catch (error) {
+    console.error('Upload error:', error)
     throw error
   }
-
-  // Upload ảnh thực tế
-  const imageBlob = await fetch(imageData).then(res => res.blob())
-  await fetch(putUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'image/png' },
-    body: imageBlob,
-  })
-
-  return resourceId
 }
 
+// Hàm tạo job xử lý ảnh
 async function createInpaintingJob(imageId: string, maskId: string) {
   const url = `${TENSOR_ART_API_URL}/jobs/workflow/template`
   
   const workflowData = {
-    request_id: Date.now().toString(),
+    request_id: Date.now().toString(), // Sử dụng timestamp thay vì md5
     templateId: WORKFLOW_TEMPLATE_ID,
     fields: {
       fieldAttrs: [
@@ -77,9 +94,18 @@ async function createInpaintingJob(imageId: string, maskId: string) {
     body: JSON.stringify(workflowData)
   })
 
-  return response.json()
+  const responseData = await response.json()
+  console.log("Response from TensorArt API:", responseData)
+
+  // Kiểm tra xem response có chứa job.id không
+  if (!responseData.job?.id) {
+    throw new Error("Invalid response from TensorArt API: Missing job ID")
+  }
+
+  return responseData
 }
 
+// Hàm theo dõi tiến trình job
 async function pollJobStatus(jobId: string) {
   const maxAttempts = 30
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -99,11 +125,12 @@ async function pollJobStatus(jobId: string) {
       throw new Error(job.failedInfo?.reason || 'Job failed')
     }
 
-    await new Promise(resolve => setTimeout(resolve, 5000))
+    await new Promise((resolve) => setTimeout(resolve, 5000))
   }
   throw new Error('Job processing timed out')
 }
 
+// Handler cho POST request
 export async function POST(request: Request) {
   try {
     // Thêm validation request
@@ -150,7 +177,7 @@ export async function POST(request: Request) {
   }
 }
 
-// Thêm handler OPTIONS
+// Handler cho OPTIONS request
 export async function OPTIONS() {
   const response = new NextResponse(null, { status: 204 })
   response.headers.set('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_ALLOWED_ORIGIN || '*')
