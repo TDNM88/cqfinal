@@ -67,7 +67,7 @@ async function createInpaintingJob(imageId: string, maskId: string) {
   const url = `${TENSOR_ART_API_URL}/jobs/workflow/template`
   
   const workflowData = {
-    request_id: Date.now().toString(), // Sử dụng timestamp thay vì md5
+    request_id: Date.now().toString(),
     templateId: WORKFLOW_TEMPLATE_ID,
     fields: {
       fieldAttrs: [
@@ -85,24 +85,39 @@ async function createInpaintingJob(imageId: string, maskId: string) {
     }
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.TENSOR_ART_API_KEY}`
-    },
-    body: JSON.stringify(workflowData)
-  })
+  const maxRetries = 3
+  let retryCount = 0
 
-  const responseData = await response.json()
-  console.log("Response from TensorArt API:", responseData)
+  while (retryCount < maxRetries) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.TENSOR_ART_API_KEY}`
+        },
+        body: JSON.stringify(workflowData)
+      })
 
-  // Kiểm tra xem response có chứa job.id không
-  if (!responseData.job?.id) {
-    throw new Error("Invalid response from TensorArt API: Missing job ID")
+      const responseData = await response.json()
+      console.log("Response from TensorArt API:", responseData)
+
+      if (!responseData.job?.id) {
+        throw new Error("Invalid response from TensorArt API: Missing job ID")
+      }
+
+      return responseData
+    } catch (error) {
+      retryCount++
+      console.error(`Attempt ${retryCount} failed:`, error)
+      if (retryCount >= maxRetries) {
+        throw error
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5000)) // Đợi 5 giây trước khi thử lại
+    }
   }
 
-  return responseData
+  throw new Error("Max retries reached")
 }
 
 // Hàm theo dõi tiến trình job
