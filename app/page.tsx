@@ -121,6 +121,15 @@ export default function ImageInpaintingApp() {
     setSelectedProduct(productName); // Cập nhật sản phẩm đã chọn
     if (image) {
       try {
+        const maskCanvas = maskCanvasRef.current;
+        if (maskCanvas) {
+          const maskCtx = maskCanvas.getContext("2d");
+          if (maskCtx) {
+            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            console.log("Kiểm tra mask trước khi tạo ảnh kết hợp:", maskData.data); // Log dữ liệu mask
+          }
+        }
+
         // Tạo ảnh kết hợp (ảnh upload + mask trong suốt)
         const combinedImageData = await getCombinedImage();
 
@@ -558,7 +567,7 @@ export default function ImageInpaintingApp() {
     const inputImageData = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
     const inputData = inputImageData.data;
 
-    // Áp dụng mask vào kênh alpha: vùng trắng (mask) = trong suốt, vùng đen = giữ nguyên
+    // Kiểm tra và áp dụng mask vào kênh alpha
     for (let i = 0; i < maskData.length; i += 4) {
       const maskValue = maskData[i]; // Giá trị grayscale từ mask (0-255)
       if (maskValue > 0) {
@@ -573,8 +582,10 @@ export default function ImageInpaintingApp() {
     // Đưa dữ liệu đã chỉnh sửa trở lại canvas
     ctx.putImageData(inputImageData, 0, 0);
 
-    // Xuất ảnh dưới dạng PNG (hỗ trợ kênh alpha)
-    return combinedCanvas.toDataURL("image/png");
+    // Xuất ảnh và log để kiểm tra
+    const result = combinedCanvas.toDataURL("image/png");
+    console.log("Kiểm tra ảnh kết hợp:", result); // Mở URL này trong trình duyệt
+    return result;
   };
 
   return (
