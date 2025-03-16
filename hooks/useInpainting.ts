@@ -14,6 +14,9 @@ async function uploadImageToTensorArt(imageData: string) {
   }
 
   try {
+    // Lưu ảnh trước khi upload
+    await saveImageToTempFolder(imageData, `upload_${Date.now()}.png`);
+
     const resourceRes = await fetch(url, {
       method: 'POST',
       headers,
@@ -151,7 +154,22 @@ async function pollJobStatus(jobId: string) {
 export function useInpainting() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [resultUrl, setResultUrl] = useState<string | null>(null); // Chỉ lưu 1 URL
+    const [resultUrl, setResultUrl] = useState<string | null>(null);
+  
+    const saveImageToTempFolder = async (imageData: string, fileName: string) => {
+      try {
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `public/temp/${fileName}`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Lỗi khi lưu ảnh:', err);
+      }
+    };
   
     const processInpainting = async (imageId: string, maskId: string) => {
       setLoading(true);
@@ -166,7 +184,11 @@ export function useInpainting() {
         }
   
         const resultUrl = await pollJobStatus(jobResponse.job.id);
-        setResultUrl(resultUrl); // Lưu kết quả thứ 2
+        setResultUrl(resultUrl);
+
+        // Lưu ảnh kết quả vào thư mục tạm
+        await saveImageToTempFolder(resultUrl, `result_${Date.now()}.png`);
+
         return resultUrl;
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Lỗi không xác định');
