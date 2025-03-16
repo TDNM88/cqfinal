@@ -1,16 +1,26 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Slider } from "@/components/ui/slider"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, Download, Eraser, Paintbrush, Loader2, Info, Send, RefreshCw, Save } from "lucide-react"
-import { Card } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useInpainting } from '../hooks/useInpainting'
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Upload,
+  Download,
+  Eraser,
+  Paintbrush,
+  Loader2,
+  Info,
+  Send,
+  RefreshCw,
+  Save,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useInpainting } from "../hooks/useInpainting";
 
 // Product data
 const products = {
@@ -40,105 +50,127 @@ const products = {
   "C4342 Casla Eternal": "/product_images/C4342.jpg",
   "C4221 Athena": "/product_images/C4221.jpg",
   "C4255 Calacatta Extra": "/product_images/C4255.jpg",
-}
+};
 
-const TENSOR_ART_API_URL = "https://ap-east-1.tensorart.cloud/v1"
-const WORKFLOW_TEMPLATE_ID = "837405094118019506"
+const TENSOR_ART_API_URL = "https://ap-east-1.tensorart.cloud/v1";
+const WORKFLOW_TEMPLATE_ID = "837405094118019506";
 
 export default function ImageInpaintingApp() {
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
-  const [brushSize, setBrushSize] = useState(20)
-  const [isEraser, setIsEraser] = useState(false)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [maskOpacity] = useState(0.5) // Fixed opacity
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [inpaintedImage, setInpaintedImage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
-  const [imageData, setImageData] = useState('')
-  const [maskData, setMaskData] = useState('')
-  const { loading, resultUrl, processInpainting } = useInpainting()
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [brushSize, setBrushSize] = useState(20);
+  const [isEraser, setIsEraser] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [maskOpacity] = useState(0.5); // Fixed opacity
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [imageData, setImageData] = useState("");
+  const [maskData, setMaskData] = useState("");
+  const { loading, resultUrl, processInpainting } = useInpainting();
 
-  const inputCanvasRef = useRef<HTMLCanvasElement>(null)
-  const outputCanvasRef = useRef<HTMLCanvasElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const maskCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const inputCanvasRef = useRef<HTMLCanvasElement>(null);
+  const outputCanvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Initialize canvases when component mounts
   useEffect(() => {
     const initCanvas = (canvas: HTMLCanvasElement | null) => {
-      if (!canvas) return
-      const ctx = canvas.getContext("2d")
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.fillStyle = "#f3f4f6"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = "#f3f4f6";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-    }
+    };
 
-    initCanvas(inputCanvasRef.current)
-    initCanvas(outputCanvasRef.current)
+    initCanvas(inputCanvasRef.current);
+    initCanvas(outputCanvasRef.current);
 
     // Create an offscreen canvas for the mask
-    const maskCanvas = document.createElement("canvas")
-    maskCanvasRef.current = maskCanvas
-  }, [])
+    const maskCanvas = document.createElement("canvas");
+    maskCanvasRef.current = maskCanvas;
+  }, []);
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     // Reset states
-    setInpaintedImage(null)
-    setError(null)
+    setInpaintedImage(null);
+    setError(null);
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (event) => {
-      setImageData(event.target?.result as string)
-      const img = new window.Image()
+      setImageData(event.target?.result as string);
+      const img = new window.Image();
       img.onload = () => {
-        setImage(img)
-        drawImageOnCanvas(img)
-      }
-      img.src = event.target?.result as string
-      img.crossOrigin = "anonymous"
-    }
-    reader.readAsDataURL(file)
-  }
+        setImage(img);
+        drawImageOnCanvas(img);
+      };
+      img.src = event.target?.result as string;
+      img.crossOrigin = "anonymous";
+    };
+    reader.readAsDataURL(file);
+  };
 
-  const handleProductSelect = (productName: string) => {
+  // Handle product selection
+  const handleProductSelect = async (productName: string) => {
     setSelectedProduct(productName); // Cập nhật sản phẩm đã chọn
     if (image) {
-      drawImageOnCanvas(image); // Hiển thị lại ảnh upload với mask đã vẽ
+      try {
+        // Tạo ảnh kết hợp (ảnh upload + mask trong suốt)
+        const combinedImageData = await getCombinedImage();
+
+        // Tải ảnh kết hợp và vẽ lên inputCanvas
+        const combinedImg = new window.Image();
+        combinedImg.onload = () => {
+          const inputCanvas = inputCanvasRef.current;
+          if (!inputCanvas) return;
+
+          const inputCtx = inputCanvas.getContext("2d");
+          if (!inputCtx) return;
+
+          // Vẽ ảnh kết hợp lên canvas
+          inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
+          inputCtx.drawImage(combinedImg, 0, 0, inputCanvas.width, inputCanvas.height);
+        };
+        combinedImg.src = combinedImageData;
+        combinedImg.crossOrigin = "anonymous";
+      } catch (err) {
+        console.error("Lỗi khi tạo ảnh kết hợp:", err);
+      }
     }
   };
 
   // Save current canvas state
   const saveCanvasState = () => {
-    if (!inputCanvasRef.current) return
+    if (!inputCanvasRef.current) return;
 
-    const dataURL = inputCanvasRef.current.toDataURL("image/png")
-    const link = document.createElement("a")
-    link.download = "canvas-state.png"
-    link.href = dataURL
-    link.click()
-  }
+    const dataURL = inputCanvasRef.current.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = "canvas-state.png";
+    link.href = dataURL;
+    link.click();
+  };
 
   // Draw uploaded image on input canvas and prepare mask canvas
   const drawImageOnCanvas = (img: HTMLImageElement) => {
     const inputCanvas = inputCanvasRef.current;
     const outputCanvas = outputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
-  
+
     if (!inputCanvas || !outputCanvas || !maskCanvas) return;
-  
+
     // Resize canvases to match image aspect ratio
     const aspectRatio = img.width / img.height;
     const maxWidth = inputCanvas.parentElement?.clientWidth || 500;
     const maxHeight = inputCanvas.parentElement?.clientHeight || 500;
-  
+
     let canvasWidth, canvasHeight;
-  
+
     if (aspectRatio > 1) {
       canvasWidth = Math.min(maxWidth, img.width);
       canvasHeight = canvasWidth / aspectRatio;
@@ -146,7 +178,7 @@ export default function ImageInpaintingApp() {
       canvasHeight = Math.min(maxHeight, img.height);
       canvasWidth = canvasHeight * aspectRatio;
     }
-  
+
     // Set canvas dimensions
     inputCanvas.width = canvasWidth;
     inputCanvas.height = canvasHeight;
@@ -154,164 +186,154 @@ export default function ImageInpaintingApp() {
     outputCanvas.height = canvasHeight;
     maskCanvas.width = canvasWidth;
     maskCanvas.height = canvasHeight;
-  
+
     // Draw image on input canvas
     const inputCtx = inputCanvas.getContext("2d");
     if (inputCtx) {
       inputCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
     }
-  
+
     // Clear the mask canvas
     const maskCtx = maskCanvas.getContext("2d");
     if (maskCtx) {
       maskCtx.clearRect(0, 0, canvasWidth, canvasHeight);
     }
-  
+
     // Draw information on output canvas
     drawInformationOnOutputCanvas();
   };
 
-    // Set canvas dimensions
-    inputCanvas.width = canvasWidth
-    inputCanvas.height = canvasHeight
-    outputCanvas.width = canvasWidth
-    outputCanvas.height = canvasHeight
-    maskCanvas.width = canvasWidth
-    maskCanvas.height = canvasHeight
-
-    // Draw image on input canvas
-    const inputCtx = inputCanvas.getContext("2d")
-    if (inputCtx) {
-      inputCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight)
-    }
-
-    // Clear the mask canvas
-    const maskCtx = maskCanvas.getContext("2d")
-    if (maskCtx) {
-      maskCtx.clearRect(0, 0, canvasWidth, canvasHeight)
-    }
-
-    // Draw information on output canvas
-    drawInformationOnOutputCanvas()
-  }
-
   // Draw information on the output canvas
   const drawInformationOnOutputCanvas = () => {
-    const canvas = outputCanvasRef.current
-    if (!canvas) return
+    const canvas = outputCanvasRef.current;
+    if (!canvas) return;
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     // Clear canvas
-    ctx.fillStyle = "#f3f4f6"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = "#f3f4f6";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw information text
-    ctx.fillStyle = "#1f2937"
-    ctx.font = '16px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    ctx.textAlign = "center"
-    ctx.fillText("Vẽ mặt nạ trên canvas bên trái", canvas.width / 2, canvas.height / 2 - 40)
-    ctx.fillText("để chỉ định vùng cần xử lý.", canvas.width / 2, canvas.height / 2 - 15)
-    ctx.fillText('Sau đó nhấn "Xử lý ảnh" để', canvas.width / 2, canvas.height / 2 + 15)
-    ctx.fillText("tạo kết quả.", canvas.width / 2, canvas.height / 2 + 40)
-  }
+    ctx.fillStyle = "#1f2937";
+    ctx.font = '16px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "Vẽ mặt nạ trên canvas bên trái",
+      canvas.width / 2,
+      canvas.height / 2 - 40
+    );
+    ctx.fillText(
+      "để chỉ định vùng cần xử lý.",
+      canvas.width / 2,
+      canvas.height / 2 - 15
+    );
+    ctx.fillText(
+      'Sau đó nhấn "Xử lý ảnh" để',
+      canvas.width / 2,
+      canvas.height / 2 + 15
+    );
+    ctx.fillText("tạo kết quả.", canvas.width / 2, canvas.height / 2 + 40);
+  };
 
   // Handle drawing on the canvas
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true)
-    draw(e)
-  }
+    setIsDrawing(true);
+    draw(e);
+  };
 
   const stopDrawing = () => {
-    setIsDrawing(false)
-    updateMaskPreview()
-  }
+    setIsDrawing(false);
+    updateMaskPreview();
+  };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
+    if (!isDrawing) return;
 
-    const canvas = inputCanvasRef.current
-    const maskCanvas = maskCanvasRef.current
-    if (!canvas || !maskCanvas) return
+    const canvas = inputCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!canvas || !maskCanvas) return;
 
-    const ctx = canvas.getContext("2d")
-    const maskCtx = maskCanvas.getContext("2d")
-    if (!ctx || !maskCtx) return
+    const ctx = canvas.getContext("2d");
+    const maskCtx = maskCanvas.getContext("2d");
+    if (!ctx || !maskCtx) return;
 
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
     // Draw on the visible canvas (for preview)
-    ctx.save()
-    ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over"
-    ctx.beginPath()
-    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
-    ctx.fillStyle = isEraser ? "rgba(0,0,0,1)" : `rgba(255,0,0,${maskOpacity})`
-    ctx.fill()
-    ctx.restore()
+    ctx.save();
+    ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
+    ctx.beginPath();
+    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fillStyle = isEraser
+      ? "rgba(0,0,0,1)"
+      : `rgba(255,0,0,${maskOpacity})`;
+    ctx.fill();
+    ctx.restore();
 
     // Draw on the mask canvas (for processing)
-    maskCtx.save()
-    maskCtx.globalCompositeOperation = isEraser ? "destination-out" : "source-over"
-    maskCtx.beginPath()
-    maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
-    maskCtx.fillStyle = isEraser ? "rgba(0,0,0,0)" : "rgba(255,255,255,1)" // White for mask
-    maskCtx.fill()
-    maskCtx.restore()
+    maskCtx.save();
+    maskCtx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
+    maskCtx.beginPath();
+    maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+    maskCtx.fillStyle = isEraser ? "rgba(0,0,0,0)" : "rgba(255,255,255,1)"; // White for mask
+    maskCtx.fill();
+    maskCtx.restore();
 
-    updateMaskPreview()
-    handleMaskUpdate()
-  }
+    updateMaskPreview();
+    handleMaskUpdate();
+  };
 
   // Update the input canvas to show the image with mask overlay
   const updateMaskPreview = () => {
     const inputCanvas = inputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
     if (!inputCanvas || !maskCanvas || !image) return;
-  
+
     const inputCtx = inputCanvas.getContext("2d");
     if (!inputCtx) return;
-  
+
     // Redraw original image
     inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
     inputCtx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
-  
+
     // Overlay mask with red color for preview
     inputCtx.save();
     inputCtx.globalAlpha = maskOpacity;
     inputCtx.globalCompositeOperation = "source-over";
     inputCtx.fillStyle = "rgba(255,0,0,1)";
-  
+
     const maskCtx = maskCanvas.getContext("2d");
     if (!maskCtx) return;
-  
+
     const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = maskCanvas.width;
     tempCanvas.height = maskCanvas.height;
     const tempCtx = tempCanvas.getContext("2d");
     if (!tempCtx) return;
-  
+
     tempCtx.putImageData(maskData, 0, 0);
     inputCtx.drawImage(tempCanvas, 0, 0);
-  
+
     inputCtx.restore();
   };
 
-  // Thêm hàm drawResultOnCanvas
+  // Draw result on output canvas
   const drawResultOnCanvas = (img: HTMLImageElement) => {
     const outputCanvas = outputCanvasRef.current;
     if (!outputCanvas) return;
 
-    const ctx = outputCanvas.getContext('2d');
+    const ctx = outputCanvas.getContext("2d");
     if (!ctx) return;
 
-    // Xóa canvas cũ
+    // Clear canvas
     ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
 
-    // Tính toán kích thước mới dựa trên tỷ lệ ảnh
+    // Calculate new size based on aspect ratio
     const aspectRatio = img.width / img.height;
     const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
     const maxHeight = outputCanvas.parentElement?.clientHeight || 500;
@@ -326,11 +348,11 @@ export default function ImageInpaintingApp() {
       canvasWidth = canvasHeight * aspectRatio;
     }
 
-    // Cập nhật kích thước canvas
+    // Update canvas size
     outputCanvas.width = canvasWidth;
     outputCanvas.height = canvasHeight;
 
-    // Vẽ ảnh kết quả
+    // Draw result image
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
   };
 
@@ -340,37 +362,37 @@ export default function ImageInpaintingApp() {
     try {
       setIsProcessing(true);
       setError(null);
-  
+
       // Tạo ảnh kết hợp từ ảnh upload và mask
       const combinedImage = await getCombinedImage();
-  
+
       // Kiểm tra xem đã chọn sản phẩm chưa
       if (!selectedProduct) {
-        throw new Error('Vui lòng chọn một sản phẩm trước khi xử lý');
+        throw new Error("Vui lòng chọn một sản phẩm trước khi xử lý");
       }
-  
+
       // Lấy ảnh sản phẩm (chỉ dùng để gửi API)
       const productImage = products[selectedProduct as keyof typeof products];
-  
-      console.log('Ảnh kết hợp (node 735):', combinedImage);
-      console.log('Ảnh sản phẩm (node 731):', productImage);
-  
+
+      console.log("Ảnh kết hợp (node 735):", combinedImage);
+      console.log("Ảnh sản phẩm (node 731):", productImage);
+
       // Upload ảnh
       const [productImageId, combinedImageId] = await Promise.all([
         uploadImageToTensorArt(productImage), // Gửi ảnh sản phẩm cho node 731
         uploadImageToTensorArt(combinedImage), // Gửi ảnh kết hợp cho node 735
       ]);
-  
+
       // Gửi đến workflow và lấy kết quả thứ 2
       const resultUrl = await processInpainting(productImageId, combinedImageId);
-  
+
       // Cập nhật và hiển thị kết quả
       setInpaintedImage(resultUrl);
       const img = new Image();
       img.onload = () => drawResultOnCanvas(img);
       img.src = resultUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lỗi không xác định');
+      setError(err instanceof Error ? err.message : "Lỗi không xác định");
     } finally {
       setIsProcessing(false);
     }
@@ -378,66 +400,66 @@ export default function ImageInpaintingApp() {
 
   // Reset the mask
   const resetMask = () => {
-    if (!image) return
+    if (!image) return;
 
-    const maskCanvas = maskCanvasRef.current
-    if (!maskCanvas) return
+    const maskCanvas = maskCanvasRef.current;
+    if (!maskCanvas) return;
 
-    const maskCtx = maskCanvas.getContext("2d")
-    if (!maskCtx) return
+    const maskCtx = maskCanvas.getContext("2d");
+    if (!maskCtx) return;
 
     // Clear the mask
-    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height)
+    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
 
     // Redraw the original image on the input canvas
-    const inputCanvas = inputCanvasRef.current
-    if (!inputCanvas) return
+    const inputCanvas = inputCanvasRef.current;
+    if (!inputCanvas) return;
 
-    const inputCtx = inputCanvas.getContext("2d")
-    if (!inputCtx) return
+    const inputCtx = inputCanvas.getContext("2d");
+    if (!inputCtx) return;
 
-    inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height)
-    inputCtx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height)
-  }
+    inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
+    inputCtx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
+  };
 
   // Download the output image
   const downloadImage = () => {
-    if (!inpaintedImage) return
+    if (!inpaintedImage) return;
 
-    const link = document.createElement("a")
-    link.download = "ket-qua-xu-ly.png"
-    link.href = inpaintedImage
-    link.click()
-  }
+    const link = document.createElement("a");
+    link.download = "ket-qua-xu-ly.png";
+    link.href = inpaintedImage;
+    link.click();
+  };
 
   const uploadImageToTensorArt = async (imageData: string) => {
     const response = await fetch(`${TENSOR_ART_API_URL}/resource/image`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
       },
-      body: JSON.stringify({ expireSec: 7200 })
-    })
-    
-    const data = await response.json()
-    const imageBlob = await fetch(imageData).then(res => res.blob())
-    
+      body: JSON.stringify({ expireSec: 7200 }),
+    });
+
+    const data = await response.json();
+    const imageBlob = await fetch(imageData).then((res) => res.blob());
+
     await fetch(data.putUrl, {
-      method: 'PUT',
+      method: "PUT",
       headers: data.headers,
-      body: imageBlob
-    })
-    
-    return data.resourceId
-  }
+      body: imageBlob,
+    });
+
+    return data.resourceId;
+  };
 
   const createInpaintingJob = async (imageId: string, maskId: string) => {
     const response = await fetch(`${TENSOR_ART_API_URL}/jobs/workflow/template`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
       },
       body: JSON.stringify({
         request_id: Date.now().toString(),
@@ -445,95 +467,97 @@ export default function ImageInpaintingApp() {
         fields: {
           fieldAttrs: [
             { nodeId: "731", fieldName: "image", fieldValue: imageId },
-            { nodeId: "735", fieldName: "image", fieldValue: maskId }
-          ]
-        }
-      })
-    })
-    
-    return response.json()
-  }
+            { nodeId: "735", fieldName: "image", fieldValue: maskId },
+          ],
+        },
+      }),
+    });
+
+    return response.json();
+  };
 
   async function pollJobStatus(jobId: string) {
     const maxAttempts = 30;
     const delay = 5000; // 5 seconds
-  
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
           headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
-          }
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
+          },
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-  
+
         const { job } = await response.json();
-        
-        if (job.status === 'SUCCESS') {
+
+        if (job.status === "SUCCESS") {
           if (job.successInfo?.images && job.successInfo.images.length >= 2) {
-            console.log("All result URLs:", job.successInfo.images.map(img => img.url));
+            console.log("All result URLs:", job.successInfo.images.map((img) => img.url));
             return job.successInfo.images[1].url; // Lấy kết quả thứ 2
           } else {
-            throw new Error('Kết quả không chứa đủ 2 URL hợp lệ');
+            throw new Error("Kết quả không chứa đủ 2 URL hợp lệ");
           }
         }
-  
-        if (job.status === 'FAILED') {
-          throw new Error(job.failedInfo?.reason || 'Job xử lý thất bại');
+
+        if (job.status === "FAILED") {
+          throw new Error(job.failedInfo?.reason || "Job xử lý thất bại");
         }
-  
-        await new Promise(resolve => setTimeout(resolve, delay));
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
       } catch (error) {
         console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error);
-        throw new Error(`Không thể lấy kết quả: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
+        throw new Error(
+          `Không thể lấy kết quả: ${error instanceof Error ? error.message : "Lỗi không xác định"}`
+        );
       }
     }
-  
-    throw new Error('Quá thời gian chờ xử lý job');
+
+    throw new Error("Quá thời gian chờ xử lý job");
   }
 
   const handleMaskUpdate = () => {
     if (maskCanvasRef.current) {
-      setMaskData(maskCanvasRef.current.toDataURL())
+      setMaskData(maskCanvasRef.current.toDataURL());
     }
-  }
+  };
 
   const getCombinedImage = async (): Promise<string> => {
     const inputCanvas = inputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
-  
+
     if (!inputCanvas || !maskCanvas || !image) {
-      throw new Error('Không tìm thấy canvas hoặc ảnh');
+      throw new Error("Không tìm thấy canvas hoặc ảnh");
     }
-  
+
     // Tạo canvas tạm thời với cùng kích thước
-    const combinedCanvas = document.createElement('canvas');
+    const combinedCanvas = document.createElement("canvas");
     combinedCanvas.width = inputCanvas.width;
     combinedCanvas.height = inputCanvas.height;
-    const ctx = combinedCanvas.getContext('2d');
-  
+    const ctx = combinedCanvas.getContext("2d");
+
     if (!ctx) {
-      throw new Error('Không thể tạo context cho canvas');
+      throw new Error("Không thể tạo context cho canvas");
     }
-  
+
     // Vẽ ảnh gốc lên canvas
     ctx.drawImage(image, 0, 0, inputCanvas.width, inputCanvas.height);
-  
+
     // Lấy dữ liệu ảnh từ maskCanvas
-    const maskCtx = maskCanvas.getContext('2d');
+    const maskCtx = maskCanvas.getContext("2d");
     if (!maskCtx) {
-      throw new Error('Không thể lấy context của mask');
+      throw new Error("Không thể lấy context của mask");
     }
     const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const maskData = maskImageData.data;
-  
+
     // Lấy dữ liệu ảnh gốc từ combinedCanvas
     const inputImageData = ctx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
     const inputData = inputImageData.data;
-  
+
     // Áp dụng mask vào kênh alpha: vùng trắng (mask) = trong suốt, vùng đen = giữ nguyên
     for (let i = 0; i < maskData.length; i += 4) {
       const maskValue = maskData[i]; // Giá trị grayscale từ mask (0-255)
@@ -545,26 +569,32 @@ export default function ImageInpaintingApp() {
         inputData[i + 3] = 255; // Alpha = 255
       }
     }
-  
+
     // Đưa dữ liệu đã chỉnh sửa trở lại canvas
     ctx.putImageData(inputImageData, 0, 0);
-  
+
     // Xuất ảnh dưới dạng PNG (hỗ trợ kênh alpha)
-    return combinedCanvas.toDataURL('image/png');
+    return combinedCanvas.toDataURL("image/png");
   };
 
   return (
     <div
       className="container mx-auto py-8 px-4 font-sans"
-      style={{ fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
+      style={{
+        fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      }}
     >
-      <h1 className="text-3xl font-light text-center mb-8 text-blue-800">CaslaQuartz AI</h1>
+      <h1 className="text-3xl font-light text-center mb-8 text-blue-800">
+        CaslaQuartz AI
+      </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Input Canvas Section */}
         <div className="flex flex-col space-y-4">
           <Card className="p-4 h-full flex flex-col shadow-md">
-            <h2 className="text-xl font-light mb-4 text-blue-800">Tải Ảnh & Chọn vật thể</h2>
+            <h2 className="text-xl font-light mb-4 text-blue-800">
+              Tải Ảnh & Chọn vật thể
+            </h2>
             <div className="relative bg-muted rounded-md overflow-hidden flex items-center justify-center flex-grow">
               <canvas
                 ref={inputCanvasRef}
@@ -674,7 +704,11 @@ export default function ImageInpaintingApp() {
                 className="flex items-center gap-2 mt-2 bg-blue-800 hover:bg-blue-900"
                 size="sm"
               >
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 {isProcessing ? "Đang xử lý..." : "Xử lý ảnh"}
               </Button>
             </div>
@@ -762,6 +796,5 @@ export default function ImageInpaintingApp() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-
