@@ -181,6 +181,10 @@ export default function ImageInpaintingApp() {
 
     if (!inputCanvas || !outputCanvas || !maskCanvas) return;
 
+    // Đảm bảo kích thước canvas mask và input luôn khớp
+    maskCanvas.width = inputCanvas.width;
+    maskCanvas.height = inputCanvas.height;
+
     // Resize canvases to match image aspect ratio
     const aspectRatio = img.width / img.height;
     const maxWidth = inputCanvas.parentElement?.clientWidth || 500;
@@ -345,32 +349,39 @@ export default function ImageInpaintingApp() {
     if (!outputCanvas) return;
 
     const ctx = outputCanvas.getContext("2d");
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-
-    // Calculate new size based on aspect ratio
-    const aspectRatio = img.width / img.height;
-    const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
-    const maxHeight = outputCanvas.parentElement?.clientHeight || 500;
-
-    let canvasWidth, canvasHeight;
-
-    if (aspectRatio > 1) {
-      canvasWidth = Math.min(maxWidth, img.width);
-      canvasHeight = canvasWidth / aspectRatio;
-    } else {
-      canvasHeight = Math.min(maxHeight, img.height);
-      canvasWidth = canvasHeight * aspectRatio;
+    if (!ctx) {
+      throw new Error("Không thể tạo context cho canvas");
     }
 
-    // Update canvas size
-    outputCanvas.width = canvasWidth;
-    outputCanvas.height = canvasHeight;
+    try {
+      // Clear canvas
+      ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
 
-    // Draw result image
-    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+      // Calculate new size based on aspect ratio
+      const aspectRatio = img.width / img.height;
+      const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+      const maxHeight = outputCanvas.parentElement?.clientHeight || 500;
+
+      let canvasWidth, canvasHeight;
+
+      if (aspectRatio > 1) {
+        canvasWidth = Math.min(maxWidth, img.width);
+        canvasHeight = canvasWidth / aspectRatio;
+      } else {
+        canvasHeight = Math.min(maxHeight, img.height);
+        canvasWidth = canvasHeight * aspectRatio;
+      }
+
+      // Update canvas size
+      outputCanvas.width = canvasWidth;
+      outputCanvas.height = canvasHeight;
+
+      // Draw result image
+      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    } catch (error) {
+      console.error("Lỗi khi vẽ kết quả lên canvas:", error);
+      throw new Error("Không thể hiển thị kết quả");
+    }
   };
 
   const addWatermark = async (imageUrl: string): Promise<string> => {
@@ -378,7 +389,13 @@ export default function ImageInpaintingApp() {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = proxyUrl + imageUrl;
-    await img.decode();
+
+    try {
+      await img.decode();
+    } catch (error) {
+      console.error("Lỗi khi tải ảnh qua proxy:", error);
+      throw new Error("Không thể tải ảnh kết quả");
+    }
 
     const canvas = document.createElement("canvas");
     canvas.width = img.width;
@@ -396,7 +413,13 @@ export default function ImageInpaintingApp() {
     const logo = new Image();
     logo.src = "/logo.png";
     logo.crossOrigin = "anonymous";
-    await logo.decode();
+
+    try {
+      await logo.decode();
+    } catch (error) {
+      console.error("Lỗi khi tải logo:", error);
+      throw new Error("Không thể tải logo");
+    }
 
     // Tính toán vị trí đặt logo (chính giữa)
     const logoX = (img.width - logo.width) / 2;
@@ -537,28 +560,37 @@ export default function ImageInpaintingApp() {
   };
 
   const createInpaintingJob = async (imageId: string, maskId: string) => {
-    const response = await fetch(`${TENSOR_ART_API_URL}/jobs/workflow/template`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
-      },
-      body: JSON.stringify({
-        request_id: Date.now().toString(),
-        templateId: WORKFLOW_TEMPLATE_ID,
-        fields: {
-          fieldAttrs: [
-            { nodeId: "731", fieldName: "image", fieldValue: imageId },
-            { nodeId: "735", fieldName: "image", fieldValue: maskId },
-          ],
+    try {
+      const response = await fetch(`${TENSOR_ART_API_URL}/jobs/workflow/template`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
         },
-      }),
-    });
+        body: JSON.stringify({
+          request_id: Date.now().toString(),
+          templateId: WORKFLOW_TEMPLATE_ID,
+          fields: {
+            fieldAttrs: [
+              { nodeId: "731", fieldName: "image", fieldValue: imageId },
+              { nodeId: "735", fieldName: "image", fieldValue: maskId },
+            ],
+          },
+        }),
+      });
 
-    return response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Lỗi khi tạo job:", error);
+      throw error;
+    }
   };
 
-  async function pollJobStatus(jobId: string) {
+  const pollJobStatus = async (jobId: string) => {
     const maxAttempts = 30;
     const delay = 5000; // 5 seconds
 
@@ -589,17 +621,23 @@ export default function ImageInpaintingApp() {
           throw new Error(job.failedInfo?.reason || "Job xử lý thất bại");
         }
 
+        if (job.status === "CANCELLED") {
+          throw new Error("Job đã bị hủy");
+        }
+
         await new Promise((resolve) => setTimeout(resolve, delay));
       } catch (error) {
         console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error);
-        throw new Error(
-          `Không thể lấy kết quả: ${error instanceof Error ? error.message : "Lỗi không xác định"}`
-        );
+        if (attempt === maxAttempts - 1) {
+          throw new Error(
+            `Không thể lấy kết quả: ${error instanceof Error ? error.message : "Lỗi không xác định"}`
+          );
+        }
       }
     }
 
     throw new Error("Quá thời gian chờ xử lý job");
-  }
+  };
 
   const handleMaskUpdate = () => {
     if (maskCanvasRef.current) {
