@@ -110,26 +110,41 @@ async function createInpaintingJob(productImageUrl: string, maskedImageUrl: stri
 // Hàm theo dõi tiến trình job
 async function pollJobStatus(jobId: string) {
   const maxAttempts = 30
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
-      }
-    })
-    
-    const { job } = await response.json()
-    
-    if (job.status === 'SUCCESS') {
-      return job.successInfo.images[0].url
-    }
-    
-    if (job.status === 'FAILED') {
-      throw new Error(job.failedInfo?.reason || 'Job failed')
-    }
+  const delay = 5000 // 5 seconds
 
-    await new Promise((resolve) => setTimeout(resolve, 5000))
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const { job } = await response.json()
+      
+      if (job.status === 'SUCCESS') {
+        if (job.successInfo?.images?.[0]?.url) {
+          return job.successInfo.images[0].url
+        }
+        throw new Error('Kết quả không chứa URL hợp lệ')
+      }
+
+      if (job.status === 'FAILED') {
+        throw new Error(job.failedInfo?.reason || 'Job xử lý thất bại')
+      }
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+    } catch (error) {
+      console.error(`Lỗi khi kiểm tra trạng thái job (lần thử ${attempt + 1}):`, error)
+      throw new Error(`Không thể lấy kết quả: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`)
+    }
   }
-  throw new Error('Job processing timed out')
+
+  throw new Error('Quá thời gian chờ xử lý job')
 }
 
 // Custom hook để xử lý inpainting
@@ -145,12 +160,18 @@ export function useInpainting() {
 
     try {
       const jobResponse = await createInpaintingJob(imageId, maskId)
-      const jobId = jobResponse.job.id
+      
+      if (!jobResponse.job?.id) {
+        throw new Error('Không nhận được ID job từ API')
+      }
 
-      const result = await pollJobStatus(jobId)
-      setResultUrl(result)
+      const resultUrl = await pollJobStatus(jobResponse.job.id)
+      
+      setResultUrl(resultUrl)
+      return resultUrl
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Unknown error")
+      setError(error instanceof Error ? error.message : 'Lỗi không xác định')
+      throw error
     } finally {
       setLoading(false)
     }
