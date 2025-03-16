@@ -65,43 +65,57 @@ async function uploadImageToTensorArt(imageData: string) {
 // Hàm tạo job xử lý ảnh
 async function createInpaintingJob(productImageUrl: string, maskedImageUrl: string) {
   const url = `${TENSOR_ART_API_URL}/jobs/workflow/template`
-  
-  const workflowData = {
-    request_id: Date.now().toString(),
-    templateId: WORKFLOW_TEMPLATE_ID,
-    fields: {
-      fieldAttrs: [
-        {
-          nodeId: "731", // Node hình ảnh sản phẩm
-          fieldName: "image",
-          fieldValue: productImageUrl
-        },
-        {
-          nodeId: "735", // Node hình ảnh đã gán mask
-          fieldName: "image",
-          fieldValue: maskedImageUrl
-        }
-      ]
+  const controller = new AbortController()
+  const timeout = 180000 // 3 phút
+
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+  try {
+    const workflowData = {
+      request_id: Date.now().toString(),
+      templateId: WORKFLOW_TEMPLATE_ID,
+      fields: {
+        fieldAttrs: [
+          {
+            nodeId: "731", // Node hình ảnh sản phẩm
+            fieldName: "image",
+            fieldValue: productImageUrl
+          },
+          {
+            nodeId: "735", // Node hình ảnh đã gán mask
+            fieldName: "image",
+            fieldValue: maskedImageUrl
+          }
+        ]
+      }
     }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.TENSOR_ART_API_KEY}`
+      },
+      body: JSON.stringify(workflowData),
+      signal: controller.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    const responseData = await response.json()
+    console.log("Response from TensorArt API:", responseData)
+
+    if (!responseData.job?.id) {
+      throw new Error("Invalid response from TensorArt API: Missing job ID")
+    }
+
+    return responseData
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error("Request timed out after 3 minutes")
+    }
+    throw error
   }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.TENSOR_ART_API_KEY}`
-    },
-    body: JSON.stringify(workflowData)
-  })
-
-  const responseData = await response.json()
-  console.log("Response from TensorArt API:", responseData)
-
-  if (!responseData.job?.id) {
-    throw new Error("Invalid response from TensorArt API: Missing job ID")
-  }
-
-  return responseData
 }
 
 // Hàm theo dõi tiến trình job
