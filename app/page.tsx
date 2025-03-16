@@ -374,8 +374,10 @@ export default function ImageInpaintingApp() {
   };
 
   const addWatermark = async (imageUrl: string): Promise<string> => {
+    const proxyUrl = "https://cors-anywhere.herokuapp.com/";
     const img = new Image();
-    img.src = imageUrl;
+    img.crossOrigin = "anonymous";
+    img.src = proxyUrl + imageUrl;
     await img.decode();
 
     const canvas = document.createElement("canvas");
@@ -393,6 +395,7 @@ export default function ImageInpaintingApp() {
     // Tải logo
     const logo = new Image();
     logo.src = "/logo.png";
+    logo.crossOrigin = "anonymous";
     await logo.decode();
 
     // Tính toán vị trí đặt logo (chính giữa)
