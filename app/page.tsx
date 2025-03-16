@@ -430,19 +430,19 @@ export default function ImageInpaintingApp() {
       // Lấy ảnh sản phẩm (chỉ dùng để gửi API)
       const productImage = products[selectedProduct as keyof typeof products];
 
-      console.log("Ảnh kết hợp (node 736):", maskImage);
+      console.log("Ảnh mask (node 736):", maskImage);
       console.log("Ảnh sản phẩm (node 735):", productImage);
       console.log("Ảnh upload (node 731):", imageData);
 
       // Upload ảnh
-      const [productImageId, maskImageId, uploadedImageId] = await Promise.all([
+      const [uploadedImageId, productImageId, maskImageId] = await Promise.all([
+        uploadImageToTensorArt(imageData), // Gửi ảnh upload cho node 731
         uploadImageToTensorArt(productImage), // Gửi ảnh sản phẩm cho node 735
         uploadImageToTensorArt(maskImage), // Gửi ảnh mask cho node 736
-        uploadImageToTensorArt(imageData), // Gửi ảnh upload cho node 731
       ]);
 
-      // Gửi đến workflow và lấy kết quả thứ 2
-      const resultUrl = await processInpainting(productImageId, maskImageId, uploadedImageId);
+      // Gửi đến workflow và lấy kết quả
+      const resultUrl = await processInpainting(uploadedImageId, productImageId, maskImageId);
 
       // Thêm watermark vào ảnh kết quả
       const watermarkedImageUrl = await addWatermark(resultUrl);
