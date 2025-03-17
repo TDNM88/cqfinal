@@ -488,7 +488,7 @@ export default function ImageInpaintingApp() {
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-      const resultBase64 = await processInpainting(resizedImageData, productImageBase64, maskImage); // Nhận base64 trực tiếp
+      const resultBase64 = await processInpainting(resizedImageData, productImageBase64, maskImage);
       const watermarkedImageUrl = await addWatermark(resultBase64);
 
       setInpaintedImage(watermarkedImageUrl);
