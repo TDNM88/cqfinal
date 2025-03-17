@@ -655,13 +655,10 @@ export default function ImageInpaintingApp() {
   };
 
   return (
-    <div
-      className="container mx-auto py-10 px-6 font-sans min-h-screen flex flex-col bg-gray-50"
-      style={{ fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
-    >
-      <div className="flex items-center justify-center mb-12">
-        <img src="/ai.png" alt="App" className="h-20 w-20 ml-2" />
-      </div>
+      <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
+        <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
+          CaslaQuartz AI
+        </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
         {/* Cột 1: Tải ảnh & Chọn vật thể */}
