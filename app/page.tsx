@@ -488,45 +488,43 @@ export default function ImageInpaintingApp() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
   
-    // Kiểm tra điều kiện đầu vào
-    if (!image) {
-      setError("Vui lòng tải ảnh trước khi xử lý");
-      return;
-    }
-    if (!selectedProduct || !products[selectedProduct as keyof typeof products]) {
-      setError("Vui lòng chọn một sản phẩm hợp lệ");
-      return;
-    }
-    if (paths.length === 0) {
-      setError("Vui lòng vẽ mask trước khi xử lý");
+    if (!selectedProduct || !resizedImageData) {
+      setError("Vui lòng chọn sản phẩm và tải ảnh lên trước khi xử lý");
       return;
     }
   
     try {
       setIsProcessing(true);
       setError(null);
-      setActiveCanvas("canvas2");
+      setActiveCanvas("canvas2"); // Đảm bảo canvas kết quả được hiển thị
   
-      // Lấy dữ liệu từ các hàm khác (giả sử đã hoạt động đúng)
+      // Lấy dữ liệu ảnh mask và ảnh sản phẩm
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-      const resultBase64 = await processInpainting(resizedImageData, productImageBase64, maskImage);
   
-      // Thêm watermark và lấy URL ảnh cuối cùng
-      const watermarkedImageUrl = await addWatermark(resultBase64);
+      // Gọi API Tensor Art để nhận URL ảnh
+      const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
+      console.log("URL ảnh từ API:", resultUrl);
   
-      // Tải ảnh từ base64
+      // Thêm watermark và nhận dữ liệu base64
+      const watermarkedImageUrl = await addWatermark(resultUrl);
+      console.log("Dữ liệu ảnh sau khi đóng dấu (base64):", watermarkedImageUrl.slice(0, 50)); // Chỉ log một phần để tránh dài dòng
+  
+      // Lưu dữ liệu ảnh để hiển thị (nếu cần)
+      setInpaintedImage(watermarkedImageUrl);
+  
+      // Tải ảnh và vẽ lên canvas
       const img = new Image();
       img.onload = () => {
-        console.log("Ảnh đã tải thành công, kích thước:", img.width, img.height);
-        drawResultOnCanvas(img); // Gọi hàm vẽ
+        console.log("Ảnh đã tải thành công");
+        drawResultOnCanvas(img);
       };
       img.onerror = () => {
-        console.error("Không thể tải ảnh từ base64");
+        console.error("Lỗi khi tải ảnh");
         setError("Không thể tải ảnh kết quả");
       };
-      img.src = watermarkedImageUrl; // Gán base64 vào src
+      img.src = watermarkedImageUrl; // Dữ liệu base64 hợp lệ sẽ hoạt động trực tiếp
     } catch (err) {
       console.error("Lỗi trong handleSubmit:", err);
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
@@ -536,46 +534,29 @@ export default function ImageInpaintingApp() {
   };
 
     const drawResultOnCanvas = (img: HTMLImageElement) => {
-    const outputCanvas = outputCanvasRef.current;
-  
-    // Kiểm tra canvas có tồn tại không
-    if (!outputCanvas) {
-      console.error("outputCanvasRef không tồn tại");
-      setError("Canvas không khả dụng");
-      return;
-    }
-  
-    const ctx = outputCanvas.getContext("2d");
-    if (!ctx) {
-      console.error("Không thể lấy context của canvas");
-      setError("Không thể lấy context của canvas");
-      return;
-    }
-  
-    // Kiểm tra kích thước ảnh
-    if (img.width === 0 || img.height === 0) {
-      console.error("Ảnh có kích thước không hợp lệ:", img.width, img.height);
-      setError("Kích thước ảnh không hợp lệ");
-      return;
-    }
-  
-    // Tính toán kích thước canvas dựa trên ảnh
-    const maxWidth = outputCanvas.parentElement?.clientWidth || 500; // Giới hạn chiều rộng tối đa
-    const aspectRatio = img.width / img.height;
-    const canvasWidth = Math.min(img.width, maxWidth);
-    const canvasHeight = canvasWidth / aspectRatio;
-  
-    // Thiết lập kích thước canvas
-    outputCanvas.width = canvasWidth;
-    outputCanvas.height = canvasHeight;
-  
-    // Xóa canvas trước khi vẽ
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  
-    // Vẽ ảnh lên canvas
-    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-    console.log("Đã vẽ ảnh lên canvas");
-  };
+      const outputCanvas = outputCanvasRef.current;
+      if (!outputCanvas) {
+        console.error("Không tìm thấy canvas");
+        return;
+      }
+    
+      const ctx = outputCanvas.getContext("2d");
+      if (!ctx) {
+        console.error("Không lấy được context của canvas");
+        return;
+      }
+    
+      const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+      const aspectRatio = img.width / img.height;
+      const canvasWidth = Math.min(img.width, maxWidth);
+      const canvasHeight = canvasWidth / aspectRatio;
+    
+      outputCanvas.width = canvasWidth;
+      outputCanvas.height = canvasHeight;
+    
+      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+      console.log("Đã vẽ ảnh lên canvas");
+    };
   
   const getCombinedImage = async (): Promise<string> => {
     const inputCanvas = inputCanvasRef.current;
