@@ -877,7 +877,7 @@ export default function ImageInpaintingApp() {
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
             <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
-              <canvas ref={outputCanvasRef} className="max-w-full" />
+              <canvas ref={outputCanvasRef} style={{ display: activeCanvas === "canvas2" ? "block" : "none" }} />
               {isProcessing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
                   <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
