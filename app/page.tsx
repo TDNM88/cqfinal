@@ -537,6 +537,29 @@ export default function ImageInpaintingApp() {
       throw new Error("Không thể tạo context cho mask BW");
     }
 
+    const convertImageToBase64 = (url: string): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Không thể tạo context cho canvas"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          const base64 = canvas.toDataURL("image/png");
+          canvas.remove();
+          resolve(base64);
+        };
+        img.onerror = () => reject(new Error("Không thể tải ảnh sản phẩm"));
+        img.src = url;
+      });
+    };
+    
     const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const maskData = maskImageData.data;
 
