@@ -15,6 +15,11 @@ interface Product {
   [key: string]: string;
 }
 
+interface Point {
+  x: number;
+  y: number;
+}
+
 // Danh sách sản phẩm
 const productGroups: { [key: string]: string[] } = {
   "NHÓM TIÊU CHUẨN (STANDARD)": [
@@ -63,6 +68,7 @@ export default function ImageInpaintingApp() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [brushColor, setBrushColor] = useState("#ffffff"); // Màu trắng mặc định
   const [brushSize, setBrushSize] = useState(5);
+  const [lastPoint, setLastPoint] = useState<Point | null>(null);
 
   const inputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const outputCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -80,7 +86,7 @@ export default function ImageInpaintingApp() {
       const img = new Image();
       img.src = imageSrc;
       img.onload = () => {
-        const maxWidth = 500; // Giới hạn kích thước tối đa
+        const maxWidth = 500;
         const aspectRatio = img.width / img.height;
         const canvasWidth = Math.min(img.width, maxWidth);
         const canvasHeight = canvasWidth / aspectRatio;
@@ -107,10 +113,36 @@ export default function ImageInpaintingApp() {
     }
   };
 
+  // Lấy tọa độ từ sự kiện chuột hoặc cảm ứng
+  const getCoordinates = (
+    event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+    canvas: HTMLCanvasElement
+  ): Point | null => {
+    const rect = canvas.getBoundingClientRect();
+    let x: number, y: number;
+
+    if ("touches" in event) {
+      const touch = event.touches[0];
+      if (!touch) return null;
+      x = touch.clientX - rect.left;
+      y = touch.clientY - rect.top;
+    } else {
+      x = event.clientX - rect.left;
+      y = event.clientY - rect.top;
+    }
+
+    return { x, y };
+  };
+
   // Bắt đầu vẽ
   const startDrawing = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!inputCanvasRef.current) return;
     setIsDrawing(true);
-    drawOnCanvas(event);
+    const point = getCoordinates(event, inputCanvasRef.current);
+    if (point) {
+      setLastPoint(point);
+      drawOnCanvas(event);
+    }
   };
 
   // Vẽ trên canvas
@@ -120,28 +152,30 @@ export default function ImageInpaintingApp() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    let x: number, y: number;
-
-    if ("touches" in event) {
-      const touch = event.touches[0];
-      if (!touch) return;
-      x = touch.clientX - rect.left;
-      y = touch.clientY - rect.top;
-    } else {
-      x = event.clientX - rect.left;
-      y = event.clientY - rect.top;
-    }
+    const currentPoint = getCoordinates(event, canvas);
+    if (!currentPoint) return;
 
     ctx.beginPath();
-    ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
-    ctx.fillStyle = brushColor;
-    ctx.fill();
+    if (lastPoint) {
+      ctx.moveTo(lastPoint.x, lastPoint.y);
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+    } else {
+      ctx.moveTo(currentPoint.x, currentPoint.y);
+      ctx.lineTo(currentPoint.x, currentPoint.y); // Vẽ điểm đơn nếu không có điểm trước
+    }
+    ctx.strokeStyle = brushColor;
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = "round"; // Đầu bút tròn để mượt mà
+    ctx.lineJoin = "round"; // Nối các đoạn mượt mà
+    ctx.stroke();
+
+    setLastPoint(currentPoint);
   };
 
   // Dừng vẽ
   const stopDrawing = () => {
     setIsDrawing(false);
+    setLastPoint(null); // Reset điểm cuối để không nối tiếp khi vẽ lại
   };
 
   // Xóa mask (khôi phục ảnh gốc)
@@ -176,7 +210,7 @@ export default function ImageInpaintingApp() {
     ctx.drawImage(img, 0, 0);
 
     const logo = new Image();
-    logo.src = "/logo.png"; // Đảm bảo có file logo.png trong public/
+    logo.src = "/logo.png";
     logo.crossOrigin = "anonymous";
 
     await logo.decode();
@@ -286,7 +320,7 @@ export default function ImageInpaintingApp() {
             >
               <canvas
                 ref={inputCanvasRef}
-                className="max-w-full"
+                className="max-w-full cursor-crosshair"
                 onMouseDown={startDrawing}
                 onMouseMove={drawOnCanvas}
                 onMouseUp={stopDrawing}
