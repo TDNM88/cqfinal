@@ -5,20 +5,12 @@ import { useCallback } from "react";
  * @returns {object} - Đối tượng chứa hàm processInpainting
  */
 export const useInpainting = () => {
-  /**
-   * Hàm gửi yêu cầu inpainting tới API và trả về ảnh kết quả dưới dạng base64
-   * @param imageBase64 - Dữ liệu ảnh gốc (base64)
-   * @param productImageBase64 - Dữ liệu ảnh sản phẩm (base64)
-   * @param maskBase64 - Dữ liệu mask (base64)
-   * @returns Promise<string> - Chuỗi base64 của ảnh kết quả
-   */
   const processInpainting = useCallback(
     async (
       imageBase64: string,
       productImageBase64: string,
       maskBase64: string
     ): Promise<string> => {
-      // Kiểm tra dữ liệu đầu vào
       if (!imageBase64 || !imageBase64.startsWith("data:image/")) {
         throw new Error("Dữ liệu ảnh gốc không hợp lệ, yêu cầu định dạng base64");
       }
@@ -30,14 +22,12 @@ export const useInpainting = () => {
       }
 
       try {
-        // Chuẩn bị FormData để gửi yêu cầu
         const formData = new FormData();
         formData.append("image", imageBase64);
         formData.append("mask", maskBase64);
         formData.append("product_image", productImageBase64);
 
-        console.log("Sending request to API...");
-        // Gửi yêu cầu POST tới API Tensor Art
+        console.log("Sending request to Tensor Art API...");
         const response = await fetch("https://cqf-api-2.onrender.com/api/inpaint", {
           method: "POST",
           body: formData,
@@ -56,9 +46,9 @@ export const useInpainting = () => {
           throw new Error("API did not return a valid imageUrl");
         }
 
-        // Tải ảnh từ imageUrl và chuyển thành base64 để tránh lỗi CORS
-        console.log("Fetching image from URL:", imageUrl);
-        const imageResponse = await fetch(imageUrl, {
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`;
+        console.log("Fetching image via proxy:", proxyUrl);
+        const imageResponse = await fetch(proxyUrl, {
           method: "GET",
           headers: {
             "Accept": "image/*",
@@ -67,7 +57,7 @@ export const useInpainting = () => {
 
         if (!imageResponse.ok) {
           const errorText = await imageResponse.text();
-          throw new Error(`Failed to fetch image from URL: ${imageUrl}, Status: ${imageResponse.status}, Message: ${errorText}`);
+          throw new Error(`Failed to fetch image via proxy: ${proxyUrl}, Status: ${imageResponse.status}, Message: ${errorText}`);
         }
 
         const imageBlob = await imageResponse.blob();
@@ -88,7 +78,7 @@ export const useInpainting = () => {
           reader.readAsDataURL(imageBlob);
         });
 
-        return base64; // Trả về base64 của ảnh
+        return base64;
       } catch (error) {
         console.error("Error in processInpainting:", error);
         throw error instanceof Error ? error : new Error("Unknown error occurred during inpainting");
