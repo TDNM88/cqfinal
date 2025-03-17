@@ -523,24 +523,34 @@ export default function ImageInpaintingApp() {
     }
   };
 
-  const drawResultOnCanvas = (img: HTMLImageElement) => {
+    const drawResultOnCanvas = (img: HTMLImageElement) => {
     const outputCanvas = outputCanvasRef.current;
-    if (!outputCanvas) return;
-
+    if (!outputCanvas) {
+      console.error("outputCanvasRef is null");
+      return;
+    }
     const ctx = outputCanvas.getContext("2d");
-    if (!ctx) return;
-
+    if (!ctx) {
+      console.error("Canvas context is null");
+      return;
+    }
+  
+    if (img.width === 0 || img.height === 0) {
+      console.error("Image has invalid dimensions:", img.width, img.height);
+      return;
+    }
+  
     const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
     const aspectRatio = img.width / img.height;
     const canvasWidth = Math.min(img.width, maxWidth);
     const canvasHeight = canvasWidth / aspectRatio;
-
+  
+    console.log("Drawing on canvas with size:", canvasWidth, canvasHeight);
     outputCanvas.width = canvasWidth;
     outputCanvas.height = canvasHeight;
-
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
   };
-
+  
   const getCombinedImage = async (): Promise<string> => {
     const inputCanvas = inputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
