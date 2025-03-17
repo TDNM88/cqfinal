@@ -91,14 +91,15 @@ export default function ImageInpaintingApp() {
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [brushColor, setBrushColor] = useState("#ffffff"); // Màu trắng mặc định
-  const [brushSize, setBrushSize] = useState(15); // Kích thước mặc định lớn
+  const [brushSize, setBrushSize] = useState(20); // Kích thước mặc định 20px giống hình
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const [isErasing, setIsErasing] = useState(false); // Chế độ xóa
+  const [showGuide, setShowGuide] = useState(false); // Hiển thị hướng dẫn
 
   const inputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const outputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const originalImageRef = useRef<HTMLImageElement | null>(null); // Lưu ảnh gốc để xóa nhanh hơn
+  const originalImageRef = useRef<HTMLImageElement | null>(null);
 
   const { processInpainting } = useInpainting();
 
@@ -112,7 +113,7 @@ export default function ImageInpaintingApp() {
       const img = new Image();
       img.src = imageSrc;
       img.onload = () => {
-        const maxWidth = 600; // Tăng kích thước canvas để hoành tráng hơn
+        const maxWidth = 600;
         const aspectRatio = img.width / img.height;
         const canvasWidth = Math.min(img.width, maxWidth);
         const canvasHeight = canvasWidth / aspectRatio;
@@ -120,7 +121,7 @@ export default function ImageInpaintingApp() {
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-        originalImageRef.current = img; // Lưu ảnh gốc để dùng cho xóa
+        originalImageRef.current = img;
       };
     }
   }, [imageSrc]);
@@ -183,7 +184,6 @@ export default function ImageInpaintingApp() {
     if (!currentPoint) return;
 
     if (isErasing && originalImageRef.current) {
-      // Chế độ xóa: Sử dụng ảnh gốc đã lưu để tăng hiệu suất
       ctx.save();
       ctx.beginPath();
       ctx.arc(currentPoint.x, currentPoint.y, brushSize / 2, 0, 2 * Math.PI);
@@ -191,7 +191,6 @@ export default function ImageInpaintingApp() {
       ctx.drawImage(originalImageRef.current, 0, 0, canvas.width, canvas.height);
       ctx.restore();
     } else {
-      // Chế độ vẽ: Vẽ đường liền mạch
       ctx.beginPath();
       if (lastPoint) {
         ctx.moveTo(lastPoint.x, lastPoint.y);
@@ -297,7 +296,7 @@ export default function ImageInpaintingApp() {
 
     const img = new Image();
     img.onload = () => {
-      const maxWidth = 600; // Đồng bộ kích thước với canvas 1
+      const maxWidth = 600;
       const aspectRatio = img.width / img.height;
       const canvasWidth = Math.min(img.width, maxWidth);
       const canvasHeight = canvasWidth / aspectRatio;
@@ -333,33 +332,26 @@ export default function ImageInpaintingApp() {
     setIsErasing(!isErasing);
   };
 
+  // Hiển thị/ẩn hướng dẫn
+  const toggleGuide = () => {
+    setShowGuide(!showGuide);
+  };
+
   return (
-    <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
-      <h1 className="text-4xl font-bold text-center mb-10 text-blue-800 transition-all duration-300 hover:text-blue-900 drop-shadow-md">
+    <div className="container mx-auto py-10 px-6 font-sans min-h-screen flex flex-col bg-gray-50">
+      <h1 className="text-4xl font-bold text-center mb-12 text-blue-900">
         CaslaQuartz AI
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
         {/* Canvas Đầu Vào */}
-        <div
-          className={`flex flex-col space-y-4 transition-all duration-300 ${
-            activeCanvas === "canvas1"
-              ? "transform scale-105 z-10"
-              : activeCanvas === "canvas2"
-              ? "transform scale-95 opacity-80"
-              : ""
-          }`}
-        >
-          <Card className="p-6 flex flex-col gap-6 shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-white rounded-xl border-2 border-blue-200">
-            <h2 className="text-2xl font-semibold text-blue-800">Tải Ảnh & Vẽ Mask</h2>
-            <div
-              className={`relative bg-gray-50 rounded-lg overflow-hidden flex items-center justify-center border-4 ${
-                imageSrc ? "border-blue-400 shadow-md" : "border-gray-300"
-              } transition-all duration-300`}
-            >
+        <div className="flex flex-col space-y-4">
+          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
+            <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
               <canvas
                 ref={inputCanvasRef}
-                className="max-w-full cursor-crosshair relative z-20 rounded-lg"
+                className="max-w-full cursor-crosshair relative z-20"
                 onMouseDown={startDrawing}
                 onMouseMove={drawOnCanvas}
                 onMouseUp={stopDrawing}
@@ -371,91 +363,97 @@ export default function ImageInpaintingApp() {
               />
               {!imageSrc && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-                  <Upload className="h-16 w-16 text-blue-800/50 mb-4" />
-                  <p className="text-blue-800/70 text-lg">Tải ảnh lên để bắt đầu</p>
+                  <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
+                  <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="mt-6 bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200 pointer-events-auto z-20 px-6 py-3 text-lg"
+                    className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto z-20"
                   >
-                    <Upload className="h-5 w-5 mr-2" />
-                    Tải ảnh
+                    <Upload className="h-4 w-4 mr-2" />
+                    Tải ảnh lên
                   </Button>
                 </div>
               )}
             </div>
             {imageSrc && (
               <div className="flex flex-col gap-4">
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 w-full bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200"
+                    className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
                   >
-                    <Upload className="h-5 w-5" />
+                    <Upload className="h-4 w-4 mr-2" />
                     Tải ảnh mới
                   </Button>
                   <Button
                     onClick={saveCanvas}
-                    className="flex items-center gap-2 w-full bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200"
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
-                    <Save className="h-5 w-5" />
+                    <Save className="h-4 w-4 mr-2" />
                     Lưu ảnh
                   </Button>
                   <Button
                     onClick={clearMask}
-                    className="flex items-center gap-2 w-full bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200"
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
-                    <Trash2 className="h-5 w-5" />
-                    Xóa Mask
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Tải ảnh mới
                   </Button>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={toggleEraseMode}
                     className={`flex items-center gap-2 ${
                       isErasing
-                        ? "bg-red-600 hover:bg-red-700"
-                        : "bg-blue-800 hover:bg-blue-900"
-                    } text-white hover:scale-105 transition-all duration-200`}
+                        ? "bg-blue-900 hover:bg-blue-800 text-white"
+                        : "bg-gray-200 hover:bg-gray-300 text-blue-900"
+                    }`}
                   >
-                    <Eraser className="h-5 w-5" />
-                    {isErasing ? "Vẽ" : "Xóa"}
+                    <Eraser className="h-4 w-4" />
+                    Bút vẽ
                   </Button>
-                  <Label htmlFor="brush-color" className="text-sm font-medium text-blue-800">
-                    Màu:
-                  </Label>
-                  <input
-                    id="brush-color"
-                    type="color"
-                    value={brushColor}
-                    onChange={(e) => setBrushColor(e.target.value)}
-                    className="w-12 h-12 rounded-md"
-                    disabled={isErasing}
-                  />
-                  <Label htmlFor="brush-size" className="text-sm font-medium text-blue-800">
-                    Kích thước:
+                  <Label htmlFor="brush-size" className="text-sm font-medium text-blue-900">
+                    Kích thước: {brushSize}px
                   </Label>
                   <input
                     id="brush-size"
                     type="range"
                     min="1"
-                    max="30" // Tăng max để brush lớn hơn nếu cần
+                    max="30"
                     value={brushSize}
                     onChange={(e) => setBrushSize(Number(e.target.value))}
-                    className="w-24"
+                    className="w-32"
                   />
                 </div>
                 <Button
                   onClick={handleSubmit}
                   disabled={!imageSrc || isProcessing}
-                  className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200 py-3 text-lg"
+                  className="bg-blue-900 hover:bg-blue-800 text-white"
                 >
                   {isProcessing ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : (
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 w-4 mr-2" />
                   )}
-                  {isProcessing ? "Đang xử lý..." : "Xử lý ảnh"}
+                  Xử lý ảnh
                 </Button>
+                <Button
+                  onClick={toggleGuide}
+                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  Hướng dẫn
+                </Button>
+                {showGuide && (
+                  <div className="mt-2 p-4 bg-blue-50 rounded-md text-sm text-blue-900">
+                    <p className="font-medium">Hướng dẫn sử dụng:</p>
+                    <ol className="list-decimal list-inside mt-2">
+                      <li>Chọn sản phẩm hoặc họa tiết bạn muốn thêm vào ảnh.</li>
+                      <li>Vẽ màu lên vùng cần xử lý (chọn phái để tay).</li>
+                      <li>Nhấn "Xử lý ảnh" để tạo kết quả.</li>
+                    </ol>
+                  </div>
+                )}
               </div>
             )}
           </Card>
@@ -469,33 +467,27 @@ export default function ImageInpaintingApp() {
         </div>
 
         {/* Danh sách sản phẩm */}
-        <div
-          className={`flex flex-col space-y-4 transition-all duration-300 ${
-            activeCanvas === "canvas1" || activeCanvas === "canvas2"
-              ? "transform scale-105 z-10"
-              : "transform scale-95 opacity-80"
-          }`}
-        >
-          <Card className="p-6 h-full flex flex-col shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-white rounded-xl border-2 border-blue-200">
-            <h2 className="text-2xl font-semibold mb-4 text-blue-800">CaslaQuartz Menu</h2>
-            <div className="text-sm text-blue-800/70 mb-2">Chọn một sản phẩm để tải ảnh:</div>
-            <ScrollArea className="flex-grow border rounded-md p-2 border-blue-100 max-h-[600px]">
+        <div className="flex flex-col space-y-4">
+          <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
+            <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
+            <p className="text-sm text-blue-900/70">Chọn một sản phẩm để tải ảnh:</p>
+            <ScrollArea className="flex-grow border rounded-md p-2 border-blue-100 h-[400px]">
               <Accordion type="single" collapsible className="w-full">
                 {Object.entries(productGroups).map(([groupName, productList]) => (
                   <AccordionItem key={groupName} value={groupName}>
-                    <AccordionTrigger className="text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition-all duration-200 hover:scale-105 text-lg">
+                    <AccordionTrigger className="text-blue-900 hover:bg-blue-50 px-2 py-1 rounded">
                       {groupName}
                     </AccordionTrigger>
                     <AccordionContent>
-                      <div className="grid grid-cols-2 gap-2 mt-1">
+                      <div className="grid grid-cols-1 gap-1 mt-1">
                         {productList.map((productName) => (
                           <Button
                             key={productName}
                             variant={selectedProduct === productName ? "default" : "outline"}
-                            className={`justify-start text-left h-auto py-2 px-3 text-sm font-normal transition-all duration-200 hover:scale-105 ${
+                            className={`justify-start text-left h-auto py-2 px-3 text-sm font-normal ${
                               selectedProduct === productName
-                                ? "bg-blue-800 hover:bg-blue-900 text-white"
-                                : "text-blue-800 border-blue-200 hover:bg-blue-50"
+                                ? "bg-blue-900 hover:bg-blue-800 text-white"
+                                : "text-blue-900 border-blue-200 hover:bg-blue-50"
                             }`}
                             onClick={() => setSelectedProduct(productName)}
                           >
@@ -508,67 +500,44 @@ export default function ImageInpaintingApp() {
                 ))}
               </Accordion>
             </ScrollArea>
-            {selectedProduct && (
-              <div className="mt-4 p-2 bg-blue-50 rounded-md text-sm text-blue-800">
-                <p className="font-medium">Đã chọn: {selectedProduct}</p>
-              </div>
-            )}
           </Card>
         </div>
 
         {/* Canvas Kết Quả */}
-        <div
-          className={`flex flex-col space-y-4 transition-all duration-300 ${
-            activeCanvas === "canvas2"
-              ? "transform scale-105 z-10"
-              : activeCanvas === "canvas1"
-              ? "transform scale-95 opacity-80"
-              : ""
-          }`}
-        >
-          <Card className="p-6 h-full flex flex-col shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-white rounded-xl border-2 border-blue-200">
-            <h2 className="text-2xl font-semibold mb-4 text-blue-800">Kết Quả Xử Lý</h2>
-            <div
-              className={`relative bg-gray-50 rounded-lg overflow-hidden flex items-center justify-center flex-grow border-4 ${
-                inpaintedImage ? "border-blue-400 shadow-md" : "border-gray-300"
-              } transition-all duration-300`}
-            >
-              <canvas ref={outputCanvasRef} className="max-w-full rounded-lg" />
+        <div className="flex flex-col space-y-4">
+          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
+            <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
+            <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
+              <canvas ref={outputCanvasRef} className="max-w-full" />
               {isProcessing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                  <Loader2 className="h-16 w-16 text-blue-800 animate-spin mb-4" />
-                  <p className="text-blue-800/70 text-lg">Đang xử lý ảnh...</p>
+                  <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
+                  <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
                 </div>
               )}
               {!inpaintedImage && !isProcessing && (
-                <p className="text-blue-800/70 text-lg">Kết quả sẽ hiển thị ở đây</p>
+                <p className="text-blue-900/70 text-lg">Kết quả sẽ hiển thị ở đây</p>
               )}
             </div>
-            <div className="mt-4 flex flex-col gap-4">
-              <Button
-                onClick={downloadImage}
-                disabled={!inpaintedImage}
-                className="flex items-цент gap-2 bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200 py-3 text-lg"
-              >
-                <Download className="h-5 w-5" />
-                Tải kết quả
-              </Button>
-              {error && (
-                <div className="mt-2 p-2 bg-red-50 text-red-800 rounded-md text-sm">
-                  <p className="font-medium">Lỗi: {error}</p>
-                </div>
-              )}
-              <div className="mt-2 flex items-center gap-1">
-                <Info className="h-4 w-4 text-blue-800/70" />
-                <p className="text-sm text-blue-800">Nhấn "Xử lý ảnh" sau khi vẽ và chọn sản phẩm</p>
+            <Button
+              onClick={downloadImage}
+              disabled={!inpaintedImage}
+              className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Tải kết quả
+            </Button>
+            {error && (
+              <div className="mt-2 p-4 bg-red-50 rounded-md text-sm text-red-900">
+                <p className="font-medium">Lỗi: {error}</p>
               </div>
-            </div>
+            )}
           </Card>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="mt-10 py-4 text-center text-sm text-blue-800/70 border-t border-blue-100 animate-fade-in">
+      <footer className="mt-12 py-4 text-center text-sm text-blue-900/70">
         <p>Liên hệ: support@caslaquartz.com | Hotline: 1234-567-890</p>
         <p>© 2025 CaslaQuartz. All rights reserved.</p>
       </footer>
