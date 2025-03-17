@@ -477,17 +477,18 @@ export default function ImageInpaintingApp() {
       setError("Vui lòng vẽ mask trước khi xử lý");
       return;
     }
-
+  
     try {
       setIsProcessing(true);
       setError(null);
       setActiveCanvas("canvas2");
-
+  
       const maskImage = await getCombinedImage();
-      const productImage = products[selectedProduct as keyof typeof products];
-      const resultUrl = await processInpainting(resizedImageData, productImage, maskImage);
+      const productImagePath = products[selectedProduct as keyof typeof products];
+      const productImageBase64 = await convertImageToBase64(productImagePath); // Chuyển ảnh sản phẩm thành base64
+      const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
       const watermarkedImageUrl = await addWatermark(resultUrl);
-
+  
       setInpaintedImage(watermarkedImageUrl);
       const img = new Image();
       img.onload = () => drawResultOnCanvas(img);
