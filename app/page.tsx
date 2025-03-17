@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, Save, Trash2, Download, Loader2, Send, Info } from "lucide-react";
+import { Upload, Save, Trash2, Download, Loader2, Send, Info, Eraser } from "lucide-react";
 import { useInpainting } from "@/hooks/useInpainting";
 
 // Định nghĩa kiểu dữ liệu
