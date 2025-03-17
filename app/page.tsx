@@ -660,8 +660,7 @@ export default function ImageInpaintingApp() {
       style={{ fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
     >
       <div className="flex items-center justify-center mb-12">
-        <h1 className="text-4xl font-bold text-blue-900">AI</h1>
-        <img src="public/logo.png" alt="Logo" className="h-10 w-10 ml-2" />
+        <img src="public/A.I.png" alt="App" className="h-10 w-10 ml-2" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
