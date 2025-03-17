@@ -22,7 +22,7 @@ interface Point {
 
 // Danh sách sản phẩm
 const productGroups: { [key: string]: string[] } = {
-  "NHÓM TIÊU CHUẨN (STANDARD)": [
+ "NHÓM TIÊU CHUẨN (STANDARD)": [
     "C1012 - Glacier White",
     "C1026 - Polar",
     "C1005 - Milky White",
@@ -35,6 +35,13 @@ const productGroups: { [key: string]: string[] } = {
     "C3105 - Casla Cloudy",
     "C3146 - Casla Nova",
     "C2240 - Marquin",
+    "C2262 - Concrete (Honed)",
+    "C3311 - Calacatta Sky",
+    "C3346 - Massimo",
+    "C4143 - Mario",
+    "C4145 - Marina",
+    "C5225 - Amber",
+    "C5240 - Spring",
   ],
   "NHÓM CAO CẤP (LUXURY)": [
     "C1102 - Super White",
@@ -42,6 +49,23 @@ const productGroups: { [key: string]: string[] } = {
     "C4246 - Casla Mystery",
     "C4254 - Mystery Gold",
     "C4326 - Statuario",
+    "C4348 - Montana",
+    "C5231 - Andes",
+    "C5242 - Rosa",
+    "C5250 - Autumn",
+    "C4111 - Aurora",
+    "C4202 - Calacatta Gold",
+    "C4204 - Calacatta Classic",
+    "C4211 - Calacatta Supreme",
+    "C4221 - Athena",
+    "C4222 - Lagoon",
+    "C4238 - Channel",
+    "C4250 - Elio",
+    "C4342 - Casla Eternal",
+    "C4345 - Oro",
+    "C4346 - Luxe",
+    "C5340 - Sonata",
+    "C5445 - Muse",
   ],
   "NHÓM SIÊU CAO CẤP (SUPER LUXURY)": [
     "C4147 - Mont",
@@ -51,7 +75,7 @@ const productGroups: { [key: string]: string[] } = {
   ],
 };
 
-const products: Product = Object.fromEntries(
+const products = Object.fromEntries(
   Object.values(productGroups).flat().map((name) => [
     name,
     `/product_images/${name.split(" - ")[0]}.jpg`,
@@ -67,8 +91,9 @@ export default function ImageInpaintingApp() {
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [brushColor, setBrushColor] = useState("#ffffff"); // Màu trắng mặc định
-  const [brushSize, setBrushSize] = useState(5);
+  const [brushSize, setBrushSize] = useState(15); // Kích thước mặc định lớn hơn (15 thay vì 5)
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
+  const [isErasing, setIsErasing] = useState(false); // Chế độ xóa
 
   const inputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const outputCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -145,9 +170,9 @@ export default function ImageInpaintingApp() {
     }
   };
 
-  // Vẽ trên canvas
+  // Vẽ hoặc xóa trên canvas
   const drawOnCanvas = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!inputCanvasRef.current || !isDrawing) return;
+    if (!inputCanvasRef.current || !isDrawing || !imageSrc) return;
     const canvas = inputCanvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -155,19 +180,34 @@ export default function ImageInpaintingApp() {
     const currentPoint = getCoordinates(event, canvas);
     if (!currentPoint) return;
 
-    ctx.beginPath();
-    if (lastPoint) {
-      ctx.moveTo(lastPoint.x, lastPoint.y);
-      ctx.lineTo(currentPoint.x, currentPoint.y);
+    if (isErasing) {
+      // Chế độ xóa: Vẽ lại vùng ảnh gốc tại vị trí con trỏ
+      const img = new Image();
+      img.src = imageSrc;
+      img.onload = () => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(currentPoint.x, currentPoint.y, brushSize / 2, 0, 2 * Math.PI);
+        ctx.clip();
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      };
     } else {
-      ctx.moveTo(currentPoint.x, currentPoint.y);
-      ctx.lineTo(currentPoint.x, currentPoint.y); // Vẽ điểm đơn nếu không có điểm trước
+      // Chế độ vẽ: Vẽ đường liền mạch
+      ctx.beginPath();
+      if (lastPoint) {
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(currentPoint.x, currentPoint.y);
+      } else {
+        ctx.moveTo(currentPoint.x, currentPoint.y);
+        ctx.lineTo(currentPoint.x, currentPoint.y);
+      }
+      ctx.strokeStyle = brushColor;
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
     }
-    ctx.strokeStyle = brushColor;
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = "round"; // Đầu bút tròn để mượt mà
-    ctx.lineJoin = "round"; // Nối các đoạn mượt mà
-    ctx.stroke();
 
     setLastPoint(currentPoint);
   };
@@ -175,10 +215,10 @@ export default function ImageInpaintingApp() {
   // Dừng vẽ
   const stopDrawing = () => {
     setIsDrawing(false);
-    setLastPoint(null); // Reset điểm cuối để không nối tiếp khi vẽ lại
+    setLastPoint(null);
   };
 
-  // Xóa mask (khôi phục ảnh gốc)
+  // Xóa toàn bộ mask
   const clearMask = () => {
     if (!inputCanvasRef.current || !imageSrc) return;
     const canvas = inputCanvasRef.current;
@@ -294,6 +334,11 @@ export default function ImageInpaintingApp() {
     link.click();
   };
 
+  // Chuyển đổi chế độ vẽ/xóa
+  const toggleEraseMode = () => {
+    setIsErasing(!isErasing);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
       <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
@@ -320,7 +365,7 @@ export default function ImageInpaintingApp() {
             >
               <canvas
                 ref={inputCanvasRef}
-                className="max-w-full cursor-crosshair"
+                className="max-w-full cursor-crosshair relative z-20" // Đảm bảo canvas luôn ở trên cùng
                 onMouseDown={startDrawing}
                 onMouseMove={drawOnCanvas}
                 onMouseUp={stopDrawing}
@@ -331,12 +376,12 @@ export default function ImageInpaintingApp() {
                 onTouchCancel={stopDrawing}
               />
               {!imageSrc && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
                   <Upload className="h-12 w-12 text-blue-800/50 mb-2" />
                   <p className="text-blue-800/70">Tải ảnh lên để bắt đầu</p>
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200"
+                    className="mt-4 bg-blue-800 hover:bg-blue-900 text-white hover:scale-105 transition-all duration-200 pointer-events-auto z-20"
                     size="sm"
                   >
                     <Upload className="h-4 w-4 mr-2" />
@@ -374,6 +419,18 @@ export default function ImageInpaintingApp() {
                   </Button>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    onClick={toggleEraseMode}
+                    className={`flex items-center gap-2 ${
+                      isErasing
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-blue-800 hover:bg-blue-900"
+                    } text-white hover:scale-105 transition-all duration-200`}
+                    size="sm"
+                  >
+                    <Eraser className="h-4 w-4" />
+                    {isErasing ? "Vẽ" : "Xóa"}
+                  </Button>
                   <Label htmlFor="brush-color" className="text-xs font-medium text-blue-800">
                     Màu:
                   </Label>
@@ -383,6 +440,7 @@ export default function ImageInpaintingApp() {
                     value={brushColor}
                     onChange={(e) => setBrushColor(e.target.value)}
                     className="w-10 h-10"
+                    disabled={isErasing} // Vô hiệu hóa khi ở chế độ xóa
                   />
                   <Label htmlFor="brush-size" className="text-xs font-medium text-blue-800">
                     Kích thước:
