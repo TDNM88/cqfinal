@@ -412,6 +412,29 @@ export default function ImageInpaintingApp() {
     fileInputRef.current?.click();
   };
 
+  const convertImageToBase64 = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Không thể tạo context cho canvas"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const base64 = canvas.toDataURL("image/png");
+        canvas.remove();
+        resolve(base64);
+      };
+      img.onerror = () => reject(new Error("Không thể tải ảnh sản phẩm"));
+      img.src = url;
+    });
+  };
+
   const addWatermark = async (imageUrl: string): Promise<string> => {
     if (!imageUrl) throw new Error("URL ảnh không hợp lệ");
 
@@ -537,6 +560,44 @@ export default function ImageInpaintingApp() {
       maskCanvasBW.remove();
       throw new Error("Không thể tạo context cho mask BW");
     }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!image) {
+        setError("Vui lòng tải ảnh trước khi xử lý");
+        return;
+      }
+      if (!selectedProduct || !products[selectedProduct as keyof typeof products]) {
+        setError("Vui lòng chọn một sản phẩm hợp lệ");
+        return;
+      }
+      if (paths.length === 0) {
+        setError("Vui lòng vẽ mask trước khi xử lý");
+        return;
+      }
+    
+      try {
+        setIsProcessing(true);
+        setError(null);
+        setActiveCanvas("canvas2");
+    
+        const maskImage = await getCombinedImage();
+        const productImagePath = products[selectedProduct as keyof typeof products];
+        const productImageBase64 = await convertImageToBase64(productImagePath); // Sử dụng hàm đã định nghĩa
+        const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
+        const watermarkedImageUrl = await addWatermark(resultUrl);
+    
+        setInpaintedImage(watermarkedImageUrl);
+        const img = new Image();
+        img.onload = () => drawResultOnCanvas(img);
+        img.onerror = () => setError("Không thể tải ảnh kết quả");
+        img.src = watermarkedImageUrl;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
+      } finally {
+        setIsProcessing(false);
+      }
+    };
 
     const convertImageToBase64 = (url: string): Promise<string> => {
       return new Promise((resolve, reject) => {
