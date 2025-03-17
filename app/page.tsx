@@ -201,7 +201,7 @@ export default function ImageInpaintingApp() {
 
     inputCanvas.width = canvasWidth;
     inputCanvas.height = canvasHeight;
-    outputCanvas.width Tereza= canvasWidth;
+    outputCanvas.width = canvasWidth; // Đã sửa lỗi cú pháp
     outputCanvas.height = canvasHeight;
     maskCanvas.width = canvasWidth;
     maskCanvas.height = canvasHeight;
