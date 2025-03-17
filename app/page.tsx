@@ -422,7 +422,7 @@ export default function ImageInpaintingApp() {
         const ctx = canvas.getContext("2d");
         if (!ctx) {
           reject(new Error("Không thể tạo context cho canvas"));
-          return;
+          return; 
         }
         ctx.drawImage(img, 0, 0);
         const base64 = canvas.toDataURL("image/png");
@@ -840,9 +840,6 @@ export default function ImageInpaintingApp() {
                   <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
                   <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
                 </div>
-              )}
-              {!inpaintedImage && !isProcessing && (
-                <p className="text-blue-900/70 text-lg">Kết quả sẽ hiển thị ở đây</p>
               )}
             </div>
 
