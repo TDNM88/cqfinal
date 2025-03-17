@@ -582,16 +582,26 @@ export default function ImageInpaintingApp() {
     
         const maskImage = await getCombinedImage();
         const productImagePath = products[selectedProduct as keyof typeof products];
-        const productImageBase64 = await convertImageToBase64(productImagePath); // Sử dụng hàm đã định nghĩa
+        const productImageBase64 = await convertImageToBase64(productImagePath);
         const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
+        console.log("API result URL:", resultUrl);
         const watermarkedImageUrl = await addWatermark(resultUrl);
+        console.log("Watermarked Image URL:", watermarkedImageUrl.slice(0, 50));
     
         setInpaintedImage(watermarkedImageUrl);
         const img = new Image();
-        img.onload = () => drawResultOnCanvas(img);
-        img.onerror = () => setError("Không thể tải ảnh kết quả");
+        img.crossOrigin = "anonymous"; // Thêm để tránh lỗi CORS
+        img.onload = () => {
+          console.log("Image loaded, size:", img.width, img.height);
+          drawResultOnCanvas(img);
+        };
+        img.onerror = () => {
+          console.error("Failed to load image:", watermarkedImageUrl);
+          setError("Không thể tải ảnh kết quả");
+        };
         img.src = watermarkedImageUrl;
       } catch (err) {
+        console.error("Error in handleSubmit:", err);
         setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
       } finally {
         setIsProcessing(false);
