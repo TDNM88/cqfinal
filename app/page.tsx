@@ -521,6 +521,8 @@ export default function ImageInpaintingApp() {
 
   const uploadImageToTensorArt = async (imageData: string) => {
     try {
+      console.log("Bắt đầu upload ảnh:", imageData); // Log để kiểm tra dữ liệu ảnh
+
       const response = await fetch(`${TENSOR_ART_API_URL}/resource/image`, {
         method: "POST",
         headers: {
@@ -535,6 +537,8 @@ export default function ImageInpaintingApp() {
       }
 
       const data = await response.json();
+      console.log("Phản hồi từ API khi tạo resource:", data); // Log phản hồi từ API
+
       const imageBlob = await fetch(imageData).then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to fetch image: ${res.statusText}`);
@@ -552,6 +556,7 @@ export default function ImageInpaintingApp() {
         throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
       }
 
+      console.log("Upload ảnh thành công, resource ID:", data.resourceId); // Log resource ID
       return data.resourceId;
     } catch (error) {
       console.error("Lỗi khi upload ảnh lên Tensor Art:", error);
