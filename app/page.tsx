@@ -201,7 +201,7 @@ export default function ImageInpaintingApp() {
 
     inputCanvas.width = canvasWidth;
     inputCanvas.height = canvasHeight;
-    outputCanvas.width = canvasWidth; // Đã sửa lỗi cú pháp
+    outputCanvas.width = canvasWidth;
     outputCanvas.height = canvasHeight;
     maskCanvas.width = canvasWidth;
     maskCanvas.height = canvasHeight;
@@ -376,7 +376,7 @@ export default function ImageInpaintingApp() {
 
   const handleGroupSelect = (group: string) => {
     setSelectedGroup(group);
-    setSelectedProduct(null); // Reset sản phẩm khi đổi nhóm
+    setSelectedProduct(null);
   };
 
   const handleProductSelect = (productName: string) => {
@@ -422,7 +422,7 @@ export default function ImageInpaintingApp() {
         const ctx = canvas.getContext("2d");
         if (!ctx) {
           reject(new Error("Không thể tạo context cho canvas"));
-          return; 
+          return;
         }
         ctx.drawImage(img, 0, 0);
         const base64 = canvas.toDataURL("image/png");
@@ -438,105 +438,111 @@ export default function ImageInpaintingApp() {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = imageData.startsWith("data:") ? imageData : imageData;
-  
+
     await img.decode();
     console.log("Đã tải ảnh để đóng dấu");
-  
+
     const logo = new Image();
     logo.src = "/logo.png";
     logo.crossOrigin = "anonymous";
     await logo.decode().catch(() => {
       throw new Error("Không thể tải logo watermark");
     });
-  
+
     const canvas = document.createElement("canvas");
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Không thể tạo context cho canvas");
-  
+
     ctx.drawImage(img, 0, 0);
     const logoSize = img.width * 0.2;
     const logoX = img.width - logoSize - 10;
     const logoY = img.height - logoSize - 10;
     ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-  
+
     return canvas.toDataURL("image/png");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
-    if (!selectedProduct || !resizedImageData) {
-      setError("Vui lòng chọn sản phẩm và tải ảnh lên trước khi xử lý");
+
+    if (!image) {
+      setError("Vui lòng tải ảnh trước khi xử lý");
       return;
     }
-  
+    if (!selectedProduct || !products[selectedProduct as keyof typeof products]) {
+      setError("Vui lòng chọn một sản phẩm hợp lệ");
+      return;
+    }
+    if (paths.length === 0) {
+      setError("Vui lòng vẽ mask trước khi xử lý");
+      return;
+    }
+
     try {
       setIsProcessing(true);
       setError(null);
-      setActiveCanvas("canvas2"); // Đảm bảo canvas kết quả được hiển thị
-  
-      // Lấy dữ liệu ảnh mask và ảnh sản phẩm
+      setActiveCanvas("canvas2");
+
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-  
-      // Gọi API Tensor Art để nhận URL ảnh
-      const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
-      console.log("URL ảnh từ API:", resultUrl);
-  
-      // Thêm watermark và nhận dữ liệu base64
-      const watermarkedImageUrl = await addWatermark(resultUrl);
-      console.log("Dữ liệu ảnh sau khi đóng dấu (base64):", watermarkedImageUrl.slice(0, 50)); // Chỉ log một phần để tránh dài dòng
-  
-      // Lưu dữ liệu ảnh để hiển thị (nếu cần)
+      const resultBase64 = await processInpainting(resizedImageData, productImageBase64, maskImage); // Nhận base64 trực tiếp
+      const watermarkedImageUrl = await addWatermark(resultBase64);
+
       setInpaintedImage(watermarkedImageUrl);
-  
-      // Tải ảnh và vẽ lên canvas
       const img = new Image();
       img.onload = () => {
-        console.log("Ảnh đã tải thành công");
+        console.log("Image loaded, size:", img.width, img.height);
         drawResultOnCanvas(img);
       };
       img.onerror = () => {
-        console.error("Lỗi khi tải ảnh");
+        console.error("Failed to load image from base64:", watermarkedImageUrl.slice(0, 50));
         setError("Không thể tải ảnh kết quả");
       };
-      img.src = watermarkedImageUrl; // Dữ liệu base64 hợp lệ sẽ hoạt động trực tiếp
+      img.src = watermarkedImageUrl;
     } catch (err) {
-      console.error("Lỗi trong handleSubmit:", err);
+      console.error("Error in handleSubmit:", err);
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
     } finally {
       setIsProcessing(false);
     }
   };
 
-    const drawResultOnCanvas = (img: HTMLImageElement) => {
-      const outputCanvas = outputCanvasRef.current;
-      if (!outputCanvas) {
-        console.error("Không tìm thấy canvas");
-        return;
-      }
-    
-      const ctx = outputCanvas.getContext("2d");
-      if (!ctx) {
-        console.error("Không lấy được context của canvas");
-        return;
-      }
-    
-      const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
-      const aspectRatio = img.width / img.height;
-      const canvasWidth = Math.min(img.width, maxWidth);
-      const canvasHeight = canvasWidth / aspectRatio;
-    
-      outputCanvas.width = canvasWidth;
-      outputCanvas.height = canvasHeight;
-    
-      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-      console.log("Đã vẽ ảnh lên canvas");
-    };
-  
+  const drawResultOnCanvas = (img: HTMLImageElement) => {
+    const outputCanvas = outputCanvasRef.current;
+    if (!outputCanvas) {
+      console.error("outputCanvasRef is null");
+      setError("Canvas không khả dụng");
+      return;
+    }
+    const ctx = outputCanvas.getContext("2d");
+    if (!ctx) {
+      console.error("Canvas context is null");
+      setError("Không thể lấy context của canvas");
+      return;
+    }
+
+    if (img.width === 0 || img.height === 0) {
+      console.error("Image has invalid dimensions:", img.width, img.height);
+      setError("Kích thước ảnh không hợp lệ");
+      return;
+    }
+
+    const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+    const aspectRatio = img.width / img.height;
+    const canvasWidth = Math.min(img.width, maxWidth);
+    const canvasHeight = canvasWidth / aspectRatio;
+
+    outputCanvas.width = canvasWidth;
+    outputCanvas.height = canvasHeight;
+
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    console.log("Image drawn on canvas with size:", canvasWidth, canvasHeight);
+  };
+
   const getCombinedImage = async (): Promise<string> => {
     const inputCanvas = inputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
@@ -556,77 +562,6 @@ export default function ImageInpaintingApp() {
       throw new Error("Không thể tạo context cho mask BW");
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!image) {
-        setError("Vui lòng tải ảnh trước khi xử lý");
-        return;
-      }
-      if (!selectedProduct || !products[selectedProduct as keyof typeof products]) {
-        setError("Vui lòng chọn một sản phẩm hợp lệ");
-        return;
-      }
-      if (paths.length === 0) {
-        setError("Vui lòng vẽ mask trước khi xử lý");
-        return;
-      }
-    
-      try {
-        setIsProcessing(true);
-        setError(null);
-        setActiveCanvas("canvas2");
-    
-        const maskImage = await getCombinedImage();
-        const productImagePath = products[selectedProduct as keyof typeof products];
-        const productImageBase64 = await convertImageToBase64(productImagePath);
-        const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
-        console.log("API result URL:", resultUrl);
-        const watermarkedImageUrl = await addWatermark(resultUrl);
-        console.log("Watermarked Image URL:", watermarkedImageUrl.slice(0, 50));
-    
-        setInpaintedImage(watermarkedImageUrl);
-        const img = new Image();
-        img.crossOrigin = "anonymous"; // Thêm để tránh lỗi CORS
-        img.onload = () => {
-          console.log("Image loaded, size:", img.width, img.height);
-          drawResultOnCanvas(img);
-        };
-        img.onerror = () => {
-          console.error("Failed to load image:", watermarkedImageUrl);
-          setError("Không thể tải ảnh kết quả");
-        };
-        img.src = watermarkedImageUrl;
-      } catch (err) {
-        console.error("Error in handleSubmit:", err);
-        setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-
-    const convertImageToBase64 = (url: string): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            reject(new Error("Không thể tạo context cho canvas"));
-            return;
-          }
-          ctx.drawImage(img, 0, 0);
-          const base64 = canvas.toDataURL("image/png");
-          canvas.remove();
-          resolve(base64);
-        };
-        img.onerror = () => reject(new Error("Không thể tải ảnh sản phẩm"));
-        img.src = url;
-      });
-    };
-    
     const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const maskData = maskImageData.data;
 
@@ -661,10 +596,10 @@ export default function ImageInpaintingApp() {
   };
 
   return (
-      <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
-        <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
-          CaslaQuartz AI
-        </h1>
+    <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
+      <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
+        CaslaQuartz AI
+      </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
         {/* Cột 1: Tải ảnh & Chọn vật thể */}
