@@ -434,55 +434,34 @@ export default function ImageInpaintingApp() {
     });
   };
 
-  const addWatermark = async (imageUrl: string): Promise<string> => {
-    if (!imageUrl) throw new Error("URL ảnh không hợp lệ");
-
+  const addWatermark = async (imageData: string): Promise<string> => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = imageUrl;
-
-    try {
-      await img.decode();
-      if (img.width <= 0 || img.height <= 0) throw new Error("Kích thước ảnh không hợp lệ");
-    } catch {
-      throw new Error("Không thể tải ảnh kết quả");
-    }
-
+    img.src = imageData.startsWith("data:") ? imageData : imageData;
+  
+    await img.decode();
+    console.log("Đã tải ảnh để đóng dấu");
+  
+    const logo = new Image();
+    logo.src = "/logo.png";
+    logo.crossOrigin = "anonymous";
+    await logo.decode().catch(() => {
+      throw new Error("Không thể tải logo watermark");
+    });
+  
     const canvas = document.createElement("canvas");
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      canvas.remove();
-      throw new Error("Không thể tạo context cho canvas");
-    }
-
+    if (!ctx) throw new Error("Không thể tạo context cho canvas");
+  
     ctx.drawImage(img, 0, 0);
-
-    const logo = new Image();
-    logo.src = "/logo.png";
-    logo.crossOrigin = "anonymous";
-
-    try {
-      await logo.decode();
-      if (logo.width <= 0 || logo.height <= 0) throw new Error("Kích thước logo không hợp lệ");
-    } catch {
-      canvas.remove();
-      throw new Error("Không thể tải logo");
-    }
-
-    const logoWidth = logo.width / 2;
-    const logoHeight = logo.height / 2;
-    const logoX = img.width - logoWidth;
-    const logoY = 0;
-
-    ctx.globalAlpha = 0.5;
-    ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
-    ctx.globalAlpha = 1.0;
-
-    const result = canvas.toDataURL("image/png");
-    canvas.remove();
-    return result;
+    const logoSize = img.width * 0.2;
+    const logoX = img.width - logoSize - 10;
+    const logoY = img.height - logoSize - 10;
+    ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+  
+    return canvas.toDataURL("image/png");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
