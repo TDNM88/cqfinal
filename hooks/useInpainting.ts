@@ -1,185 +1,144 @@
-import { useState } from 'react'
+// hooks/useInpainting.ts
+import { useState } from 'react';
 
-// Cấu hình API TensorArt
-const TENSOR_ART_API_URL = "https://ap-east-1.tensorart.cloud/v1"
-const WORKFLOW_TEMPLATE_ID = "837405094118019506"
+const TENSOR_ART_API_URL = "https://ap-east-1.tensorart.cloud/v1";
+const WORKFLOW_TEMPLATE_ID = "837405094118019506";
 
-// Hàm upload ảnh lên TensorArt
-async function uploadImageToTensorArt(imageData: string) {
-  const url = `${TENSOR_ART_API_URL}/resource/image`
-  const headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
-  }
-
-  try {
-    const resourceRes = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ expireSec: 7200 }),
-    })
-    const responseText = await resourceRes.text()
-    if (!resourceRes.ok) {
-      throw new Error(`POST failed: ${resourceRes.status} - ${responseText}`)
-    }
-    const resourceResponse = JSON.parse(responseText)
-    const putUrl = resourceResponse.putUrl as string
-    const resourceId = resourceResponse.resourceId as string
-    const putHeaders = (resourceResponse.headers as Record<string, string>) || { 'Content-Type': 'image/png' }
-
-    if (!putUrl || !resourceId) {
-      throw new Error(`Invalid response: ${JSON.stringify(resourceResponse)}`)
-    }
-
-    const imageBlob = await fetch(imageData).then(res => res.blob())
-    const putResponse = await fetch(putUrl, {
-      method: 'PUT',
-      headers: putHeaders,
-      body: imageBlob,
-    })
-
-    if (![200, 203].includes(putResponse.status)) {
-      throw new Error(`PUT failed: ${putResponse.status} - ${await putResponse.text()}`)
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 10000))
-    return resourceId
-  } catch (error) {
-    console.error('Upload error:', error)
-    throw error
-  }
-}
-
-// Hàm tạo job xử lý ảnh
-async function createInpaintingJob(uploadedImageUrl: string, productImageUrl: string, maskImageUrl: string) {
-  const url = `${TENSOR_ART_API_URL}/jobs/workflow/template`
-  const controller = new AbortController()
-  const timeout = 180000 // 3 phút
-
-  const timeoutId = setTimeout(() => controller.abort(), timeout)
-
-  try {
-    const workflowData = {
-      request_id: Date.now().toString(),
-      templateId: WORKFLOW_TEMPLATE_ID,
-      fields: {
-        fieldAttrs: [
-          {
-            nodeId: "731", // Node ảnh người dùng upload
-            fieldName: "image",
-            fieldValue: uploadedImageUrl
-          },
-          {
-            nodeId: "735", // Node ảnh sản phẩm
-            fieldName: "image",
-            fieldValue: productImageUrl
-          },
-          {
-            nodeId: "745", // Node ảnh mask
-            fieldName: "image",
-            fieldValue: maskImageUrl
-          }
-        ]
-      }
-    }
-
-    console.log("Dữ liệu gửi lên API:", workflowData)
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
-      },
-      body: JSON.stringify(workflowData),
-      signal: controller.signal
-    })
-
-    clearTimeout(timeoutId)
-
-    const responseData = await response.json()
-    console.log("Response from TensorArt API:", responseData)
-
-    if (!responseData.job?.id) {
-      throw new Error("Invalid response from TensorArt API: Missing job ID")
-    }
-
-    return responseData
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      throw new Error("Request timed out after 3 minutes")
-    }
-    throw error
-  }
-}
-
-// Hàm theo dõi tiến trình job
-const pollJobStatus = async (jobId: string, timeout = 300000) => {
-  const startTime = Date.now();
-  const url = `${TENSOR_ART_API_URL}/jobs/${jobId}`;
-
-  while (Date.now() - startTime < timeout) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`
-        }
-      });
-
-      const data = await response.json();
-      console.log("Job ID:", jobId);
-      console.log("Trạng thái job:", data.job.status);
-      console.log("Kết quả trả về:", data.job.resultUrl);
-
-      if (data.job.status === 'SUCCESS') {
-        if (!data.job.resultUrl) {
-          throw new Error("Job hoàn thành nhưng không có URL kết quả");
-        }
-        return data.job.resultUrl;
-      } else if (data.job.status === 'failed') {
-        throw new Error(`Job failed: ${data.job.failureInfo?.reason}`);
-      }
-
-      // Chờ 5 giây trước khi thử lại
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    } catch (error) {
-      throw new Error(`Không thể lấy kết quả: ${error.message}`);
-    }
-  }
-
-  throw new Error(`Request timed out after ${timeout / 1000} seconds`);
-};
-
-// Custom hook để xử lý inpainting
 export function useInpainting() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
 
-  const processInpainting = async (uploadedImageId: string, productImageId: string, maskImageId: string) => {
+  async function uploadImageToTensorArt(imageData: string): Promise<string> {
+    try {
+      const response = await fetch(`${TENSOR_ART_API_URL}/resource/image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
+        },
+        body: JSON.stringify({ expireSec: 7200 }),
+      });
+
+      if (!response.ok) throw new Error(`POST failed: ${response.status}`);
+      const resourceResponse: { putUrl: string; resourceId: string; headers: Record<string, string> } = await response.json();
+
+      const imageBlob = await fetch(imageData).then((res) => res.blob());
+      const putResponse = await fetch(resourceResponse.putUrl, {
+        method: "PUT",
+        headers: resourceResponse.headers || { "Content-Type": "image/png" },
+        body: imageBlob,
+      });
+
+      if (!putResponse.ok) throw new Error(`PUT failed: ${putResponse.status}`);
+      return resourceResponse.resourceId;
+    } catch (error) {
+      console.error("Upload error:", error);
+      throw error instanceof Error ? error : new Error("Unknown upload error");
+    }
+  }
+
+  async function createInpaintingJob(uploadedImageId: string, productImageId: string, maskImageId: string): Promise<string> {
+    try {
+      const workflowData = {
+        request_id: Date.now().toString(),
+        templateId: WORKFLOW_TEMPLATE_ID,
+        fields: {
+          fieldAttrs: [
+            { nodeId: "731", fieldName: "image", fieldValue: uploadedImageId },
+            { nodeId: "735", fieldName: "image", fieldValue: productImageId },
+            { nodeId: "745", fieldName: "image", fieldValue: maskImageId },
+          ],
+        },
+      };
+
+      const response = await fetch(`${TENSOR_ART_API_URL}/jobs/workflow/template`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
+        },
+        body: JSON.stringify(workflowData),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data: { job: { id: string } } = await response.json();
+      if (!data.job?.id) throw new Error("Missing job ID");
+      return data.job.id;
+    } catch (error) {
+      console.error("Job creation error:", error);
+      throw error instanceof Error ? error : new Error("Unknown job creation error");
+    }
+  }
+
+  async function pollJobStatus(jobId: string, timeout: number = 300000): Promise<string> {
+    const startTime = Date.now();
+    const url = `${TENSOR_ART_API_URL}/jobs/${jobId}`;
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
+          },
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data: {
+          job: {
+            status: string;
+            resultUrl?: string;
+            successInfo?: { images?: { url: string }[] };
+            output?: { url: string }[];
+            failureInfo?: { reason?: string };
+          };
+        } = await response.json();
+        console.log("Job status response:", data);
+
+        const job = data.job;
+        if (job.status === "SUCCESS") {
+          const resultUrl = job.resultUrl || job.successInfo?.images?.[0]?.url || job.output?.[0]?.url;
+          if (!resultUrl) throw new Error("No result URL found in SUCCESS response");
+          return resultUrl;
+        } else if (job.status === "FAILED") {
+          throw new Error(`Job failed: ${job.failureInfo?.reason || "Unknown reason"}`);
+        } else if (job.status === "CANCELLED") {
+          throw new Error("Job was cancelled");
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      } catch (error) {
+        console.error("Polling error:", error);
+        throw error instanceof Error ? error : new Error("Unknown polling error");
+      }
+    }
+    throw new Error(`Timeout after ${timeout / 1000} seconds`);
+  }
+
+  async function processInpainting(uploadedImageData: string, productImageData: string, maskImageData: string): Promise<string> {
     setLoading(true);
     setError(null);
     setResultUrl(null);
 
     try {
-      const jobResponse = await createInpaintingJob(uploadedImageId, productImageId, maskImageId);
+      const [uploadedImageId, productImageId, maskImageId] = await Promise.all([
+        uploadImageToTensorArt(uploadedImageData),
+        uploadImageToTensorArt(productImageData),
+        uploadImageToTensorArt(maskImageData),
+      ]);
 
-      if (!jobResponse.job?.id) {
-        throw new Error('Không nhận được ID job từ API');
-      }
-
-      const resultUrl = await pollJobStatus(jobResponse.job.id);
-      setResultUrl(resultUrl);
-
-      return resultUrl;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Lỗi không xác định');
-      throw error;
+      const jobId = await createInpaintingJob(uploadedImageId, productImageId, maskImageId);
+      const result = await pollJobStatus(jobId);
+      setResultUrl(result);
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return { loading, error, resultUrl, processInpainting };
 }
