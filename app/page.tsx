@@ -232,7 +232,6 @@ export default function ImageInpaintingApp() {
     ctx.fillStyle = "#1E3A8A";
     ctx.font = '16px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
     ctx.textAlign = "center";
-    ctx.fillText("Kết quả sẽ hiển thị ở đây", canvas.width / 2, canvas.height / 2);
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -660,7 +659,10 @@ export default function ImageInpaintingApp() {
       className="container mx-auto py-10 px-6 font-sans min-h-screen flex flex-col bg-gray-50"
       style={{ fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
     >
-      <h1 className="text-4xl font-bold text-center mb-12 text-blue-900">CaslaQuartz AI</h1>
+      <div className="flex items-center justify-center mb-12">
+        <h1 className="text-4xl font-bold text-blue-900">AI</h1>
+        <img src="public/logo.png" alt="Logo" className="h-10 w-10 ml-2" />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
         {/* Cột 1: Tải ảnh & Chọn vật thể */}
