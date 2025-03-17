@@ -109,7 +109,7 @@ export default function ImageInpaintingApp() {
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.fillStyle = "#f3f4f6";
+        ctx.fillStyle = "#F3F4F6";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     };
@@ -122,7 +122,7 @@ export default function ImageInpaintingApp() {
   const resizeImage = (img: HTMLImageElement, maxWidth: number): Promise<string> => {
     return new Promise((resolve) => {
       const aspectRatio = img.width / img.height;
-      const canvasWidth = maxWidth;
+      const canvasWidth = Math.min(img.width, maxWidth);
       const canvasHeight = canvasWidth / aspectRatio;
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = canvasWidth;
@@ -173,7 +173,7 @@ export default function ImageInpaintingApp() {
 
     const maxWidth = inputCanvas.parentElement?.clientWidth || 500;
     const aspectRatio = img.width / img.height;
-    const canvasWidth = maxWidth;
+    const canvasWidth = Math.min(img.width, maxWidth);
     const canvasHeight = canvasWidth / aspectRatio;
 
     inputCanvas.width = canvasWidth;
@@ -208,7 +208,7 @@ export default function ImageInpaintingApp() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#f3f4f6";
+    ctx.fillStyle = "#F3F4F6";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "#1E3A8A";
@@ -337,7 +337,7 @@ export default function ImageInpaintingApp() {
       inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
       inputCtx.drawImage(resizedImg, 0, 0, inputCanvas.width, inputCanvas.height);
       inputCtx.globalAlpha = maskOpacity;
-      inputCtx.drawImage(maskCanvas, 0, 0);
+      inputCtx.drawImage(maskCanvas, 0, 0, inputCanvas.width, inputCanvas.height);
       inputCtx.globalAlpha = 1.0;
     };
     resizedImg.src = resizedImageData;
@@ -402,11 +402,9 @@ export default function ImageInpaintingApp() {
     img.crossOrigin = "anonymous";
     img.src = imageUrl;
 
-    try {
-      await img.decode();
-    } catch (error) {
+    await img.decode().catch(() => {
       throw new Error("Không thể tải ảnh kết quả");
-    }
+    });
 
     const canvas = document.createElement("canvas");
     canvas.width = img.width;
@@ -420,11 +418,9 @@ export default function ImageInpaintingApp() {
     logo.src = "/logo.png";
     logo.crossOrigin = "anonymous";
 
-    try {
-      await logo.decode();
-    } catch (error) {
+    await logo.decode().catch(() => {
       throw new Error("Không thể tải logo");
-    }
+    });
 
     const logoWidth = logo.width / 2;
     const logoHeight = logo.height / 2;
@@ -441,16 +437,17 @@ export default function ImageInpaintingApp() {
   // Xử lý ảnh
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!image || !selectedProduct) {
+      setError("Vui lòng tải ảnh và chọn sản phẩm trước khi xử lý");
+      return;
+    }
+
     try {
       setIsProcessing(true);
       setError(null);
       setActiveCanvas("canvas2");
 
       const maskImage = await getCombinedImage();
-
-      if (!selectedProduct) {
-        throw new Error("Vui lòng chọn một sản phẩm trước khi xử lý");
-      }
 
       const productImage = products[selectedProduct as keyof typeof products];
       const resultUrl = await processInpainting(resizedImageData, productImage, maskImage);
@@ -461,7 +458,7 @@ export default function ImageInpaintingApp() {
       img.onload = () => drawResultOnCanvas(img);
       img.src = watermarkedImageUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Lỗi không xác định");
+      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
     } finally {
       setIsProcessing(false);
     }
@@ -477,7 +474,7 @@ export default function ImageInpaintingApp() {
 
     const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
     const aspectRatio = img.width / img.height;
-    const canvasWidth = maxWidth;
+    const canvasWidth = Math.min(img.width, maxWidth);
     const canvasHeight = canvasWidth / aspectRatio;
 
     outputCanvas.width = canvasWidth;
@@ -529,9 +526,7 @@ export default function ImageInpaintingApp() {
       className="container mx-auto py-10 px-6 font-sans min-h-screen flex flex-col bg-gray-50"
       style={{ fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
     >
-      <h1 className="text-4xl font-bold text-center mb-12 text-blue-900">
-        CaslaQuartz AI
-      </h1>
+      <h1 className="text-4xl font-bold text-center mb-12 text-blue-900">CaslaQuartz AI</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
         {/* Canvas Đầu Vào */}
@@ -541,7 +536,7 @@ export default function ImageInpaintingApp() {
             <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
               <canvas
                 ref={inputCanvasRef}
-                className="max-w-none cursor-crosshair"
+                className="max-w-full cursor-crosshair"
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}
@@ -553,7 +548,7 @@ export default function ImageInpaintingApp() {
                 onClick={deletePathAtPosition}
               />
               {!image && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
                   <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
                   <Button
@@ -642,7 +637,7 @@ export default function ImageInpaintingApp() {
 
                 <Button
                   onClick={handleSubmit}
-                  disabled={!image || isProcessing}
+                  disabled={!image || isProcessing || !selectedProduct}
                   className="bg-blue-900 hover:bg-blue-800 text-white"
                 >
                   {isProcessing ? (
@@ -699,12 +694,15 @@ export default function ImageInpaintingApp() {
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
             <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
-              <canvas ref={outputCanvasRef} className="max-w-none" />
+              <canvas ref={outputCanvasRef} className="max-w-full" />
               {isProcessing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
                   <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
                   <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
                 </div>
+              )}
+              {!inpaintedImage && !isProcessing && (
+                <p className="text-blue-900/70 text-lg">Kết quả sẽ hiển thị ở đây</p>
               )}
             </div>
 
@@ -719,7 +717,7 @@ export default function ImageInpaintingApp() {
 
             {error && (
               <Alert variant="destructive" className="mt-2 p-4">
-                <AlertTitle className="text-sm">Lỗi</AlertTitle>
+                <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
                 <AlertDescription className="text-sm">{error}</AlertDescription>
               </Alert>
             )}
