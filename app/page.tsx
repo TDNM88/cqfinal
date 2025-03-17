@@ -703,38 +703,35 @@ export default function ImageInpaintingApp() {
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
             <p className="text-sm text-blue-900/70">Chọn một sản phẩm để tải ảnh:</p>
-            <ScrollArea className="flex-grow border rounded-md p-2 border-blue-100 h-[400px]">
-              <Accordion type="single" collapsible className="w-full">
+            <Select onValueChange={handleProductSelect}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Chọn sản phẩm" />
+              </SelectTrigger>
+              <SelectContent>
                 {Object.entries(productGroups).map(([groupName, productList]) => (
-                  <AccordionItem key={groupName} value={groupName}>
-                    <AccordionTrigger className="text-blue-900 hover:bg-blue-50 px-2 py-1 rounded">
-                      {groupName}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid grid-cols-1 gap-1 mt-1">
-                        {productList.map((productName) => (
-                          <Button
-                            key={productName}
-                            variant={selectedProduct === productName ? "default" : "outline"}
-                            className={`justify-start text-left h-auto py-2 px-3 text-sm font-normal ${
-                              selectedProduct === productName
-                                ? "bg-blue-900 hover:bg-blue-800 text-white"
-                                : "text-blue-900 border-blue-200 hover:bg-blue-50"
-                            }`}
-                            onClick={() => handleProductSelect(productName)}
-                          >
-                            {productName}
-                          </Button>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                  <React.Fragment key={groupName}>
+                    <h3 className="px-2 py-1 text-sm font-medium text-blue-900">{groupName}</h3>
+                    {productList.map((productName) => (
+                      <SelectItem key={productName} value={productName}>
+                        {productName}
+                      </SelectItem>
+                    ))}
+                  </React.Fragment>
                 ))}
-              </Accordion>
-            </ScrollArea>
+              </SelectContent>
+            </Select>
+        
+            {/* Khu vực thông báo/marketing */}
+            <div className="mt-4">
+              <Alert>
+                <AlertTitle>Thông báo quan trọng</AlertTitle>
+                <AlertDescription>
+                  Đây là nơi để hiển thị các thông báo hoặc nội dung marketing. Bạn có thể cập nhật nội dung này theo nhu cầu.
+                </AlertDescription>
+              </Alert>
+            </div>
           </Card>
         </div>
-
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
@@ -752,14 +749,19 @@ export default function ImageInpaintingApp() {
             </div>
 
             <Button
-              onClick={downloadImage}
-              disabled={!inpaintedImage}
-              className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Tải kết quả
+              <Upload className="h-4 w-4 mr-2" />
+              Tải ảnh lên
             </Button>
-
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/*"
+              className="hidden"
+            />
             {error && (
               <Alert variant="destructive" className="mt-2 p-4">
                 <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
