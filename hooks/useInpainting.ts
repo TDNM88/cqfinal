@@ -32,6 +32,7 @@ export const useInpainting = () => {
     formData.append("mask", maskData);
 
     try {
+      console.log("Bắt đầu gửi yêu cầu tới API inpainting...");
       // Gửi yêu cầu tới API
       const apiResponse = await fetch("https://cqf-api-2.onrender.com/api/inpaint", {
         method: "POST",
@@ -40,32 +41,41 @@ export const useInpainting = () => {
 
       if (!apiResponse.ok) {
         const errorText = await apiResponse.text();
-        throw new Error(`HTTP error! Status: ${apiResponse.status}, Message: ${errorText}`);
+        throw new Error(`Gửi yêu cầu API thất bại! Status: ${apiResponse.status}, Message: ${errorText}`);
       }
 
       const data = await apiResponse.json();
-      const imageUrl = data.imageUrl; // URL ảnh từ API
+      const imageUrl = data.imageUrl;
+      console.log("API trả về imageUrl:", imageUrl);
 
-      if (!imageUrl) {
+      if (!imageUrl || typeof imageUrl !== "string") {
         throw new Error("API không trả về imageUrl hợp lệ");
       }
 
-      // Tải ảnh từ imageUrl để tránh lỗi CORS
+      // Tải ảnh từ imageUrl
+      console.log("Bắt đầu tải ảnh từ imageUrl:", imageUrl);
       const imageResponse = await fetch(imageUrl, {
         method: "GET",
+        headers: {
+          "Accept": "image/*", // Đảm bảo yêu cầu trả về dữ liệu ảnh
+        },
       });
 
       if (!imageResponse.ok) {
-        throw new Error(`Không thể tải ảnh từ URL: ${imageUrl}, Status: ${imageResponse.status}`);
+        const errorText = await imageResponse.text();
+        throw new Error(`Tải ảnh từ imageUrl thất bại: ${imageUrl}, Status: ${imageResponse.status}, Message: ${errorText}`);
       }
 
       // Chuyển đổi ảnh thành base64
       const imageBlob = await imageResponse.blob();
+      console.log("Đã tải ảnh thành công, kích thước Blob:", imageBlob.size);
+
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
           if (result && result.startsWith("data:image/")) {
+            console.log("Chuyển đổi thành base64 thành công, độ dài:", result.length);
             resolve(result);
           } else {
             reject(new Error("Dữ liệu ảnh tải về không phải định dạng base64 hợp lệ"));
@@ -75,7 +85,7 @@ export const useInpainting = () => {
         reader.readAsDataURL(imageBlob);
       });
 
-      return base64; // Trả về chuỗi base64 của ảnh kết quả
+      return base64;
     } catch (error) {
       console.error("Lỗi trong quá trình inpainting:", error);
       throw error instanceof Error ? error : new Error("Đã xảy ra lỗi không xác định trong quá trình inpainting");
