@@ -1,17 +1,22 @@
-import { useCallback } from "react";
+"use client";
 
-/**
- * Hook để xử lý inpainting qua API Tensor Art
- * @returns {object} - Đối tượng chứa hàm processInpainting
- */
-export const useInpainting = () => {
-  /**
-   * Hàm gửi yêu cầu inpainting tới API và trả về ảnh kết quả dưới dạng base64
-   * @param imageBase64 - Dữ liệu ảnh gốc (base64)
-   * @param productImageBase64 - Dữ liệu ảnh sản phẩm (base64)
-   * @param maskBase64 - Dữ liệu mask (base64)
-   * @returns Promise<string> - Chuỗi base64 của ảnh kết quả
-   */
+import React, { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw, Save } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { useInpainting } from "@/hooks/useInpainting";
+
+// Định nghĩa kiểu Path cho các đường vẽ
+type Path = {
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
+};
+
   const processInpainting = useCallback(
     async (
       imageBase64: string,
