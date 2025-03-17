@@ -4,11 +4,10 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw, Save } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useInpainting } from "@/hooks/useInpainting";
 
 // Định nghĩa kiểu Path cho các đường vẽ
@@ -99,6 +98,7 @@ export default function ImageInpaintingApp() {
   const [paths, setPaths] = useState<Path[]>([]);
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
 
+  // Refs
   const inputCanvasRef = useRef<HTMLCanvasElement>(null);
   const outputCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -157,7 +157,7 @@ export default function ImageInpaintingApp() {
 
       ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
       const result = tempCanvas.toDataURL("image/png");
-      tempCanvas.remove(); // Làm sạch tài nguyên
+      tempCanvas.remove();
       resolve(result);
     });
   };
@@ -398,17 +398,21 @@ export default function ImageInpaintingApp() {
       return;
     }
     setSelectedProduct(productName);
+    setError(null); // Xóa lỗi nếu chọn sản phẩm hợp lệ
   };
 
   const saveCanvasState = () => {
     const canvas = inputCanvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      setError("Không thể lưu canvas vì canvas không tồn tại");
+      return;
+    }
     const dataURL = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.download = "canvas-state.png";
     link.href = dataURL;
     link.click();
-    link.remove(); // Làm sạch tài nguyên
+    link.remove();
   };
 
   const handleReloadImage = () => {
@@ -486,6 +490,10 @@ export default function ImageInpaintingApp() {
       setError("Vui lòng chọn một sản phẩm hợp lệ");
       return;
     }
+    if (paths.length === 0) {
+      setError("Vui lòng vẽ mask trước khi xử lý");
+      return;
+    }
 
     try {
       setIsProcessing(true);
@@ -561,7 +569,10 @@ export default function ImageInpaintingApp() {
   };
 
   const downloadImage = () => {
-    if (!inpaintedImage) return;
+    if (!inpaintedImage) {
+      setError("Không có ảnh kết quả để tải");
+      return;
+    }
     const link = document.createElement("a");
     link.download = "ket-qua-xu-ly.png";
     link.href = inpaintedImage;
@@ -577,6 +588,7 @@ export default function ImageInpaintingApp() {
       <h1 className="text-4xl font-bold text-center mb-12 text-blue-900">CaslaQuartz AI</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
+        {/* Cột 1: Tải ảnh & Chọn vật thể */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
             <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
@@ -595,12 +607,12 @@ export default function ImageInpaintingApp() {
                 onClick={deletePathAtPosition}
               />
               {!image && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
                   <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
+                    className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Tải ảnh lên
@@ -638,7 +650,7 @@ export default function ImageInpaintingApp() {
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Tải ảnh mới
+                    Tải lại ảnh
                   </Button>
                 </div>
 
@@ -671,12 +683,12 @@ export default function ImageInpaintingApp() {
                         className="mt-1"
                       />
                     </div>
-                    <p className="text-sm text-blue-900">Chuột phải để tẩy</p>
+                    <p className="text-sm text-blue-900">Chuột phải để tẩy, nhấp để xóa đường vẽ</p>
                   </TabsContent>
                   <TabsContent value="info" className="space-y-2 mt-2">
                     <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
-                      <p>1. Chọn sản phẩm hoặc họa tiết bạn muốn thêm vào ảnh.</p>
-                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột phải để tẩy).</p>
+                      <p>1. Chọn sản phẩm từ dropdown bên phải.</p>
+                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy, nhấp để xóa).</p>
                       <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
                     </div>
                   </TabsContent>
@@ -699,6 +711,7 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
 
+        {/* Cột 2: Dropdown sản phẩm và Thông báo */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
@@ -707,10 +720,12 @@ export default function ImageInpaintingApp() {
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Chọn sản phẩm" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
                 {Object.entries(productGroups).map(([groupName, productList]) => (
                   <React.Fragment key={groupName}>
-                    <h3 className="px-2 py-1 text-sm font-medium text-blue-900">{groupName}</h3>
+                    <h3 className="px-2 py-1 text-sm font-medium text-blue-900 bg-blue-50 sticky top-0">
+                      {groupName}
+                    </h3>
                     {productList.map((productName) => (
                       <SelectItem key={productName} value={productName}>
                         {productName}
@@ -720,18 +735,20 @@ export default function ImageInpaintingApp() {
                 ))}
               </SelectContent>
             </Select>
-        
+
             {/* Khu vực thông báo/marketing */}
-            <div className="mt-4">
+            <div className="mt-4 flex-grow">
               <Alert>
                 <AlertTitle>Thông báo quan trọng</AlertTitle>
                 <AlertDescription>
-                  Đây là nơi để hiển thị các thông báo hoặc nội dung marketing. Bạn có thể cập nhật nội dung này theo nhu cầu.
+                  Đây là nơi để hiển thị các thông báo hoặc nội dung marketing. Ví dụ: "Khuyến mãi đặc biệt: Giảm 20% cho dòng sản phẩm Luxury đến hết tháng này!"
                 </AlertDescription>
               </Alert>
             </div>
           </Card>
         </div>
+
+        {/* Cột 3: Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
@@ -749,19 +766,14 @@ export default function ImageInpaintingApp() {
             </div>
 
             <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
+              onClick={downloadImage}
+              disabled={!inpaintedImage}
+              className="bg-gray-200 hover:bg-gray-300 text-blue-900"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Tải ảnh lên
+              <Download className="h-4 w-4 mr-2" />
+              Tải kết quả
             </Button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              className="hidden"
-            />
+
             {error && (
               <Alert variant="destructive" className="mt-2 p-4">
                 <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
