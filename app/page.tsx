@@ -486,76 +486,95 @@ export default function ImageInpaintingApp() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!image) {
-        setError("Vui lòng tải ảnh trước khi xử lý");
-        return;
-      }
-      if (!selectedProduct || !products[selectedProduct as keyof typeof products]) {
-        setError("Vui lòng chọn một sản phẩm hợp lệ");
-        return;
-      }
-      if (paths.length === 0) {
-        setError("Vui lòng vẽ mask trước khi xử lý");
-        return;
-      }
-    
-      try {
-        setIsProcessing(true);
-        setError(null);
-        setActiveCanvas("canvas2");
-    
-        const maskImage = await getCombinedImage();
-        const productImagePath = products[selectedProduct as keyof typeof products];
-        const productImageBase64 = await convertImageToBase64(productImagePath);
-        const resultBase64 = await processInpainting(resizedImageData, productImageBase64, maskImage); // Nhận base64 trực tiếp
-        const watermarkedImageUrl = await addWatermark(resultBase64); // resultBase64 đã là base64
-    
-        setInpaintedImage(watermarkedImageUrl);
-        const img = new Image();
-        img.onload = () => {
-          console.log("Image loaded successfully, size:", img.width, img.height);
-          drawResultOnCanvas(img);
-        };
-        img.onerror = () => {
-          console.error("Failed to load image from base64:", watermarkedImageUrl.slice(0, 50));
-          setError("Không thể tải ảnh kết quả");
-        };
-        img.src = watermarkedImageUrl;
-      } catch (err) {
-        console.error("Error in handleSubmit:", err);
-        setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
-      } finally {
-        setIsProcessing(false);
-      }
-    };
+    e.preventDefault();
+  
+    // Kiểm tra điều kiện đầu vào
+    if (!image) {
+      setError("Vui lòng tải ảnh trước khi xử lý");
+      return;
+    }
+    if (!selectedProduct || !products[selectedProduct as keyof typeof products]) {
+      setError("Vui lòng chọn một sản phẩm hợp lệ");
+      return;
+    }
+    if (paths.length === 0) {
+      setError("Vui lòng vẽ mask trước khi xử lý");
+      return;
+    }
+  
+    try {
+      setIsProcessing(true);
+      setError(null);
+      setActiveCanvas("canvas2");
+  
+      // Lấy dữ liệu từ các hàm khác (giả sử đã hoạt động đúng)
+      const maskImage = await getCombinedImage();
+      const productImagePath = products[selectedProduct as keyof typeof products];
+      const productImageBase64 = await convertImageToBase64(productImagePath);
+      const resultBase64 = await processInpainting(resizedImageData, productImageBase64, maskImage);
+  
+      // Thêm watermark và lấy URL ảnh cuối cùng
+      const watermarkedImageUrl = await addWatermark(resultBase64);
+  
+      // Tải ảnh từ base64
+      const img = new Image();
+      img.onload = () => {
+        console.log("Ảnh đã tải thành công, kích thước:", img.width, img.height);
+        drawResultOnCanvas(img); // Gọi hàm vẽ
+      };
+      img.onerror = () => {
+        console.error("Không thể tải ảnh từ base64");
+        setError("Không thể tải ảnh kết quả");
+      };
+      img.src = watermarkedImageUrl; // Gán base64 vào src
+    } catch (err) {
+      console.error("Lỗi trong handleSubmit:", err);
+      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
     const drawResultOnCanvas = (img: HTMLImageElement) => {
     const outputCanvas = outputCanvasRef.current;
+  
+    // Kiểm tra canvas có tồn tại không
     if (!outputCanvas) {
-      console.error("outputCanvasRef is null");
+      console.error("outputCanvasRef không tồn tại");
+      setError("Canvas không khả dụng");
       return;
     }
+  
     const ctx = outputCanvas.getContext("2d");
     if (!ctx) {
-      console.error("Canvas context is null");
+      console.error("Không thể lấy context của canvas");
+      setError("Không thể lấy context của canvas");
       return;
     }
   
+    // Kiểm tra kích thước ảnh
     if (img.width === 0 || img.height === 0) {
-      console.error("Image has invalid dimensions:", img.width, img.height);
+      console.error("Ảnh có kích thước không hợp lệ:", img.width, img.height);
+      setError("Kích thước ảnh không hợp lệ");
       return;
     }
   
-    const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+    // Tính toán kích thước canvas dựa trên ảnh
+    const maxWidth = outputCanvas.parentElement?.clientWidth || 500; // Giới hạn chiều rộng tối đa
     const aspectRatio = img.width / img.height;
     const canvasWidth = Math.min(img.width, maxWidth);
     const canvasHeight = canvasWidth / aspectRatio;
   
-    console.log("Drawing on canvas with size:", canvasWidth, canvasHeight);
+    // Thiết lập kích thước canvas
     outputCanvas.width = canvasWidth;
     outputCanvas.height = canvasHeight;
+  
+    // Xóa canvas trước khi vẽ
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  
+    // Vẽ ảnh lên canvas
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    console.log("Đã vẽ ảnh lên canvas");
   };
   
   const getCombinedImage = async (): Promise<string> => {
