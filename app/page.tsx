@@ -531,31 +531,42 @@ export default function ImageInpaintingApp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
-
+  
     try {
       setIsProcessing(true);
       setError(null);
       setActiveCanvas("canvas2");
-
+  
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
       const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
-
+      console.log("Result URL from TensorArt:", resultUrl);
+  
+      // Dùng proxy để tải ảnh từ resultUrl
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
+      console.log("Proxied URL:", proxiedUrl);
+  
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
-
+  
       const img = new Image();
-      img.onload = () => drawResultOnCanvas(img);
-      img.onerror = () => setError("Không thể tải ảnh kết quả sau khi thêm watermark");
+      img.onload = () => {
+        console.log("Image loaded successfully:", img.width, img.height);
+        drawResultOnCanvas(img);
+      };
+      img.onerror = () => {
+        console.error("Failed to load watermarked image:", watermarkedImageUrl);
+        setError("Không thể tải ảnh kết quả sau khi thêm watermark");
+      };
       img.src = watermarkedImageUrl;
     } catch (err) {
+      console.error("Error in handleSubmit:", err);
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
     } finally {
       setIsProcessing(false);
@@ -565,16 +576,19 @@ export default function ImageInpaintingApp() {
   const drawResultOnCanvas = (img: HTMLImageElement) => {
     const outputCanvas = outputCanvasRef.current;
     if (!outputCanvas) {
+      console.error("outputCanvasRef is null");
       setError("Canvas không khả dụng");
       return;
     }
     const ctx = outputCanvas.getContext("2d");
     if (!ctx) {
+      console.error("Canvas context is null");
       setError("Không thể lấy context của canvas");
       return;
     }
 
     if (img.width === 0 || img.height === 0) {
+      console.error("Image has invalid dimensions:", img.width, img.height);
       setError("Kích thước ảnh không hợp lệ");
       return;
     }
@@ -589,6 +603,7 @@ export default function ImageInpaintingApp() {
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    console.log("Image drawn on canvas with size:", canvasWidth, canvasHeight);
   };
 
   const getCombinedImage = async (): Promise<string> => {
@@ -645,7 +660,7 @@ export default function ImageInpaintingApp() {
 
   return (
     <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
-      <h1 className="text-3xl font-bold text-center mb-8 text-blue-900 transition-all duration-300 hover:text-blue-900">
+      <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
         CaslaQuartz AI
       </h1>
 
