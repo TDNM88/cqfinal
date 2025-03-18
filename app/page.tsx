@@ -743,8 +743,49 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
 
-                  </Card>
+       {/* Cột 2: Chọn sản phẩm */}
+        <div className="flex flex-col space-y-4">
+          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-xl font-medium text-blue-900">Chọn Sản Phẩm</h2>
+            <div className="space-y-4">
+              <Select onValueChange={handleGroupSelect} value={selectedGroup || undefined}>
+                <SelectTrigger className="bg-blue-50 border-blue-200">
+                  <SelectValue placeholder="Chọn nhóm sản phẩm" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(productGroups).map((group) => (
+                    <SelectItem key={group} value={group}>
+                      {group}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {selectedGroup && (
+                <Select onValueChange={handleProductSelect} value={selectedProduct || undefined}>
+                  <SelectTrigger className="bg-blue-50 border-blue-200">
+                    <SelectValue placeholder="Chọn sản phẩm" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productGroups[selectedGroup].map((item) => (
+                      <SelectItem key={item.name} value={item.name}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {selectedProduct && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-md">
+                  <h3 className="text-lg font-medium text-blue-900">Báo giá</h3>
+                  <p className="text-sm text-blue-900">{getProductQuote(selectedProduct)}</p>
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
+      </div>
 
         {/* Cột 3: Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
