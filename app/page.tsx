@@ -82,8 +82,6 @@ const products = Object.fromEntries(
 
 export const dynamic = "force-dynamic";
 
-eexport const dynamic = "force-dynamic";
-
 export default function ImageInpaintingApp() {
   // State
   const [image, setImage] = useState<HTMLImageElement | null>(null);
