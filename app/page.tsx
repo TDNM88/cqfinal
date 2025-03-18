@@ -435,38 +435,44 @@ export default function ImageInpaintingApp() {
 
   const addWatermark = async (imageData: string): Promise<string> => {
     try {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = imageData.startsWith("data:") ? imageData : imageData;
-
-        await img.decode();
-        console.log("Đã tải ảnh để đóng dấu", img);
-
-        const logo = new Image();
-        logo.src = "/logo.png";
-        logo.crossOrigin = "anonymous";
-        await logo.decode().catch(() => {
-            throw new Error("Không thể tải logo watermark");
-        });
-
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Không thể tạo context cho canvas");
-
-        ctx.drawImage(img, 0, 0);
-        const logoSize = img.width * 0.2;
-        const logoX = img.width - logoSize - 10;
-        const logoY = img.height - logoSize - 10;
-        ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-
-        return canvas.toDataURL("image/png");
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = imageData;
+  
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error(`Không thể tải ảnh từ ${imageData}`));
+      });
+  
+      console.log("Đã tải ảnh để đóng dấu:", img.width, img.height);
+  
+      const logo = new Image();
+      logo.src = "/logo.png";
+      await new Promise<void>((resolve, reject) => {
+        logo.onload = () => resolve();
+        logo.onerror = () => reject(new Error("Không thể tải logo watermark từ /logo.png"));
+      });
+  
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Không thể tạo context cho canvas");
+  
+      ctx.drawImage(img, 0, 0);
+      const logoSize = img.width * 0.2;
+      const logoX = img.width - logoSize - 10;
+      const logoY = img.height - logoSize - 10;
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+  
+      const result = canvas.toDataURL("image/png");
+      canvas.remove();
+      return result;
     } catch (error) {
-        console.error("Error in addWatermark:", error);
-        throw error;
+      console.error("Error in addWatermark:", error);
+      throw error instanceof Error ? error : new Error("Unknown error in addWatermark");
     }
-};
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
