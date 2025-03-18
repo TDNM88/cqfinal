@@ -19,55 +19,31 @@ type Path = {
 // Danh sách sản phẩm và câu quote
 const productGroups = {
   "NHÓM TIÊU CHUẨN (STANDARD)": [
-    { name: "C1012 - Glacier White", quote: "Glacier với nền trắng kết hợp với những hạt thạch anh kích thước nhỏ, kết hợp với ánh sáng tạo ra chiều sâu cho bề mặt, độ cứng cao, bền đẹp, phù hợp với các công trình thương mại" },
-    { name: "C1026 - Polar", quote: "Polar với nền trắng kết hợp với những hạt thạch anh kích thước lớn, kết hợp với ánh sáng tạo ra chiều sâu cho bề mặt, độ cứng cao, bền đẹp, phù hợp với các công trình thương mại" },
-    { name: "C1005 - Milky White", quote: "Milky White với màu trắng tinh khiết, nhẹ nhàng, dễ dàng kết hợp với các đồ nội thất khác, phù hợp với phong cách tối giản" },
-    { name: "C3168 - Silver Wave", quote: "Silver Wave chủ đạo với nền trắng, hòa cùng đó là những ánh bạc ngẫu hứng như những con sóng xô bờ dưới cái nắng chói chang của miền biển nhiệt đới" },
-    { name: "C3269 - Ash Grey", quote: "Ash Grey với màu nền tông xám, kết hợp với bond trầm tựa như làn khói ẩn hiện trong không gian, tạo nên sự trang nhã đầy cuốn hút" },
+    { name: "C1012 - Glacier White", quote: "Glacier với nền trắng kết hợp với những hạt thạch anh kích thước nhỏ, tạo chiều sâu cho bề mặt, bền đẹp, phù hợp với các công trình thương mại." },
+    { name: "C1026 - Polar", quote: "Polar với nền trắng và hạt thạch anh lớn, kết hợp ánh sáng tạo chiều sâu, độ cứng cao, phù hợp cho công trình thương mại." },
+    { name: "C1005 - Milky White", quote: "Milky White với màu trắng tinh khiết, nhẹ nhàng, phù hợp với phong cách tối giản." },
+    { name: "C3168 - Silver Wave", quote: "Silver Wave với nền trắng và ánh bạc như sóng biển dưới nắng nhiệt đới, đầy cuốn hút." },
+    { name: "C3269 - Ash Grey", quote: "Ash Grey với tông xám trầm như làn khói, tạo sự trang nhã và cuốn hút." },
   ],
   "NHÓM TRUNG CẤP (DELUXE)": [
-    { name: "C2103 - Onyx Carrara", quote: "Onyx Carrara lấy cảm hứng từ dòng đá cẩm thạch Carrara nổi tiếng của nước Ý; được thiết kế với những vân ẩn tinh tế, nhẹ nhàng trên nền đá trắng pha chút gam tối tạo không gian ấm cúng, bình yên." },
-    { name: "C2104 - Massa", quote: "Massa được lấy cảm hứng từ dòng đá cẩm thạch Carrara nổi tiếng của Italy với những vân ẩn tinh tế và nhẹ nhàng tạo không gian sang trọng trên nền đá cẩm thạch trắng Carrara." },
-    { name: "C3105 - Casla Cloudy", quote: "Casla Cloudy với tông xanh nhẹ nhàng, giống như tên gọi Cloudy, là bầu trời xanh với vân mây tinh tế xuất hiện ở mật độ vừa phải, tiếp nối vô tận trong một không gian khoáng đạt." },
-    { name: "C3146 - Casla Nova", quote: "Casla Nova với tông nâu vàng của những áng mây nhẹ nhàng được thiết kế tự do chấm phá trên nền đá cẩm thạch trắng, tạo không gian vừa sang trọng lại ấm cúng." },
-    { name: "C2240 - Marquin", quote: "Marquin nổi bật với nền đen điểm cùng bond màu trắng, hai màu sắc đối lập của bảng màu ẩn hiện đan xen nhau tạo nên sự trừu tượng trong khối kết cấu cụ thể" },
-    { name: "C2262 - Concrete (Honed)", quote: "Concrete được lấy cảm hứng từ bề mặt giả xi măng, với sự pha trộn hoàn hảo giữa các gam màu xám sáng ấm áp, chuyển động vân tinh tế, là sự lựa chọn thông minh cho không gian hiện đại." },
-    { name: "C3311 - Calacatta Sky", quote: "Calacatta Sky với những đường vân mảnh đậm nhạt xen lẫn nhau, nhẹ nhàng lướt trên toàn bộ bề mặt tạo sự thu hút như vào một không gian vô tận. Màu nâu xám của vân hòa cùng nền đá trắng tạo nên sự hài hòa vừa cổ điển vừa hiện đại." },
-    { name: "C3346 - Massimo", quote: "Massimo lấy vẻ ngoài của bê tông làm chủ đạo, họa tiết vân đá là sự mô phỏng các trường từ vô hình trên Mặt Trời, tạo nên hiệu ứng thị giác độc đáo, thô mộc nhưng mạnh mẽ và đầy táo bạo." },
-    { name: "C4143 - Mario", quote: "Mario mang tông màu ấm nâu vàng, được lấy cảm hứng từ mùa thu vàng của Levitan, tạo nét thơ mộng cho không gian bằng việc gợi liên tưởng đến cảnh sắc của hàng cây mùa đổ lá bên cạnh dòng sông đang uốn lượn." },
-    { name: "C4145 - Marina", quote: "Marina mang tông màu xám lạnh, được lấy cảm hứng từ những dòng sông miền cực bắc quanh năm phủ tuyết trắng, nơi màu xanh của nước tinh khiết hòa quyện với màu trắng của tuyết tạo nên một cảnh tượng kỳ vĩ tráng lệ." },
-    { name: "C5225 - Amber", quote: "Amber khác lạ với các đường vân màu nâu đậm tinh tế, kéo dài theo chiều dài tấm đá. Màu sắc ấm áp và sang trọng mang lại vẻ đẹp tự nhiên, tạo điểm nhấn như một dòng sông đang uốn lượn." },
-    { name: "C5240 - Spring", quote: "Spring lấy cảm hứng từ các yếu tố tương phản sáng tối, cùng với đường vân sắc nét uyển chuyển nhấp nhô khắp bề mặt, mang lại sự cân bằng hoàn hảo, làm nổi bật vẻ hiện đại và sang trọng." },
+    { name: "C2103 - Onyx Carrara", quote: "Onyx Carrara lấy cảm hứng từ đá cẩm thạch Ý, với vân tinh tế trên nền trắng, tạo không gian ấm cúng." },
+    { name: "C2104 - Massa", quote: "Massa với vân nhẹ nhàng trên nền đá trắng Carrara, mang đến không gian sang trọng." },
+    { name: "C3105 - Casla Cloudy", quote: "Casla Cloudy với tông xanh như bầu trời mây, tạo không gian khoáng đạt." },
+    { name: "C3146 - Casla Nova", quote: "Casla Nova với tông nâu vàng trên nền trắng, vừa sang trọng vừa ấm cúng." },
+    { name: "C2240 - Marquin", quote: "Marquin với nền đen và bond trắng, tạo sự trừu tượng đầy cuốn hút." },
   ],
   "NHÓM CAO CẤP (LUXURY)": [
-    { name: "C1102 - Super White", quote: "Super White mang tông màu trắng sáng đặc biệt nhờ được tạo nên từ vật liệu cao cấp, tuy đơn giản nhưng không kém phần sang trọng" },
-    { name: "C1205 - Casla Everest", quote: "Casla Everest được lấy cảm hứng từ ngọn núi Everest quanh năm tuyết phủ, độc đáo với đường vân chỉ mấp mô như những đỉnh núi, điểm xuyết thêm vân rối như những đám mây hài hòa trên bề mặt màu trắng cẩm thạch sang trọng." },
-    { name: "C4246 - Casla Mystery", quote: "Casla Mystery trừu tượng trong khối kết cụ thể, các đường vân mỏng manh cùng thiết kế không quá cầu kỳ, đem lại cho không gian ấm cúng, bình yên đến lạ." },
-    { name: "C4254 - Mystery Gold", quote: "Mystery Gold, với những đường vân mảnh mai, hòa quyện giữa sự lạnh lẽo và ấm áp, mang đến không gian ấm cúng và yên bình." },
-    { name: "C4326 - Statuario", quote: "Statuario Silver tái hiện hình ảnh những dòng sông uốn lượn trên nền tuyết trắng tinh khôi, mang đến một thiết kế tinh tế và sang trọng." },
-    { name: "C4348 - Montana", quote: "Montana để lại dấu ấn đậm nét với những mảng vân mây xám màu tựa bầu trời dữ dội báo bão, mang đến cảm giác mạnh mẽ, cá tính." },
-    { name: "C5231 - Andes", quote: "Andes với những đường vân uyển chuyển, lấp lánh chạy xuyên qua bề mặt, phản chiếu ánh sáng và tạo thành những hình khối mạnh mẽ đầy tao nhã." },
-    { name: "C5242 - Rosa", quote: "Rosa được lấy cảm hứng từ những hạt mưa hiền hòa nghiêng rơi trong gió, mang tông màu sáng tạo sự mát mẻ cho công trình nội thất" },
-    { name: "C5250 - Autumn", quote: "Autumn với những đường vân xám tinh tế chạy qua tấm đá theo hình thức tự nhiên và dứt khoát, đan xen cùng vân vàng như tia nắng rực rỡ, vừa độc đáo thanh lịch vừa mang lại cảm giác an tâm." },
-    { name: "C4111 - Aurora", quote: "Aurora là một thiết kế độc đáo lấy cảm hứng từ vẻ đẹp hùng vĩ của dãy núi Andes, với họa tiết sắc xám tinh tế, mang đến ấn tượng mạnh." },
-    { name: "C4202 - Calacatta Gold", quote: "Calacatta Gold được lấy cảm hứng từ dòng đá cẩm thạch tự nhiên nổi tiếng nhất từ nước Ý với các đường vân trong tông vàng ấn tượng nổi bật trên nền trắng làm bừng sáng không gian." },
-    { name: "C4204 - Calacatta Classic", quote: "Calacatta Classic được lấy cảm hứng từ dòng đá cẩm thạch tự nhiên nổi tiếng nhất từ nước Ý với các đường vân trong tông vàng ấn tượng nổi bật trên nền trắng làm bừng sáng không gian." },
-    { name: "C4211 - Calacatta Supreme", quote: "Calacatta Supreme nổi bật với những đường vân xám tối đan xen, uyển chuyển như những nhánh cây vươn ra trên nền trắng cẩm thạch, tạo điểm nhấn sang trọng." },
-    { name: "C4221 - Athena", quote: "Athena lấy cảm hứng từ dòng đá cẩm thạch Calacatta, tái hiện dòng dung nham chảy sâu trong từng vết xẻ của các tầng địa chất, toát lên sự sang trọng và hoàn hảo." },
-    { name: "C4222 - Lagoon", quote: "Lagoon nổi bật trên nền trắng tinh khiết giống đá cẩm thạch, kết hợp các tông màu tự nhiên theo xu hướng thiết kế nội thất chú trọng sự hài hòa với thiên nhiên." },
-    { name: "C4238 - Channel", quote: "Channel lấy cảm hứng từ vẻ đẹp nguyên bản của đá thạch anh tự nhiên, gây ấn tượng với các đường vân màu xám đậm, ấm áp, hài hòa tinh tế cùng sắc thái tự nhiên." },
-    { name: "C4250 - Elio", quote: "Elio nổi bật với những đường vân mạnh mẽ, có kết cấu tông màu ấm và sự chuyển đổi màu sắc nhẹ nhàng trên bề mặt màu trắng cẩm thạch sang trọng." },
-    { name: "C4342 - Casla Eternal", quote: "Eternal mô phỏng dòng đá cẩm thạch kinh điển của nước Ý với sự kết hợp mềm mại giữa nền trắng và các đường vân tông xám to nhỏ đan xen, tạo sự nhẹ nhàng cho không gian." },
-    { name: "C4345 - Oro", quote: "Oro mô phỏng dòng đá cẩm thạch đẳng cấp của nước Ý với sự kết hợp thanh lịch giữa nền trắng với các đường vân trong tông vàng tạo nên hình khối rõ nét." },
-    { name: "C4346 - Luxe", quote: "Luxe mô phỏng dòng cẩm thạch nổi tiếng nước Ý với sự kết hợp giữa nền trắng và các đường vân xám tông xanh thanh thoát đầy ngẫu hứng, nổi bật trong không gian sang trọng." },
-    { name: "C5340 - Sonata", quote: "Sonata với những đường vân xám mềm mại xếp thành từng lớp, tạo nên độ tương phản tinh tế và chiều sâu ấn tượng." },
-    { name: "C5445 - Muse", quote: "Muse tạo nên sự hòa quyện hài hòa giữa các đường vân mảnh màu vàng và xám nhẹ, phân bố tinh tế trên toàn bộ tấm đá, mang đến không gian ấm áp và an yên." },
+    { name: "C1102 - Super White", quote: "Super White với màu trắng sáng từ vật liệu cao cấp, đơn giản nhưng sang trọng." },
+    { name: "C1205 - Casla Everest", quote: "Casla Everest lấy cảm hứng từ núi Everest, với vân như đỉnh núi trên nền trắng sang trọng." },
+    { name: "C4246 - Casla Mystery", quote: "Casla Mystery với vân mỏng manh, mang lại không gian ấm cúng, bình yên." },
+    { name: "C4254 - Mystery Gold", quote: "Mystery Gold với vân mảnh hòa quyện giữa lạnh và ấm, tạo không gian yên bình." },
+    { name: "C4326 - Statuario", quote: "Statuario Silver tái hiện dòng sông trên nền tuyết trắng, tinh tế và sang trọng." },
   ],
   "NHÓM SIÊU CAO CẤP (SUPER LUXURY)": [
-    { name: "C4147 - Mont", quote: "Mont với những đường vân dày mềm mại xếp thành từng lớp, kết hợp màu vàng và xám tạo nên độ tương phản tinh tế và chiều sâu, mang đến vẻ đẹp vượt thời gian." },
-    { name: "C4149 - River", quote: "River nổi bật với các dải màu xám trên nền trắng tạo chiều sâu và cân bằng, mang lại vẻ đẹp tự nhiên và đẳng cấp." },
-    { name: "C4255 - Calacatta Extra", quote: "Calacatta Extra nổi bật với những đường vân xám tối đan xen, uyển chuyển như những nhánh cây vươn ra trên nền cẩm thạch trắng tinh khiết, tạo điểm nhấn sang trọng." },
-    { name: "C5366 - Skiron", quote: "Skiron tái hiện hình ảnh những con sóng biển trên nền đá, với các đường vân xanh xếp lớp cùng những mảng trắng và xám, phù hợp cho không gian nội thất hiện đại." },
+    { name: "C4147 - Mont", quote: "Mont với vân dày mềm mại, kết hợp vàng và xám, mang vẻ đẹp vượt thời gian." },
+    { name: "C4149 - River", quote: "River với dải xám trên nền trắng, tạo chiều sâu và vẻ đẹp tự nhiên." },
+    { name: "C4255 - Calacatta Extra", quote: "Calacatta Extra với vân xám tối uyển chuyển trên nền trắng, sang trọng." },
+    { name: "C5366 - Skiron", quote: "Skiron tái hiện sóng biển với vân xanh trên nền đá, hiện đại và tinh tế." },
   ],
 };
 
@@ -78,11 +54,9 @@ const products = Object.fromEntries(
   ])
 );
 
-// Vô hiệu hóa prerendering tĩnh
 export const dynamic = "force-dynamic";
 
 export default function ImageInpaintingApp() {
-  // State
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [resizedImageData, setResizedImageData] = useState<string>("");
   const [brushSize, setBrushSize] = useState(20);
@@ -98,7 +72,6 @@ export default function ImageInpaintingApp() {
   const [paths, setPaths] = useState<Path[]>([]);
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
 
-  // Refs
   const inputCanvasRef = useRef<HTMLCanvasElement>(null);
   const outputCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +79,6 @@ export default function ImageInpaintingApp() {
 
   const { processInpainting } = useInpainting();
 
-  // Khởi tạo canvas
   useEffect(() => {
     const initCanvas = (canvas: HTMLCanvasElement | null) => {
       if (!canvas) return;
@@ -126,29 +98,18 @@ export default function ImageInpaintingApp() {
 
   const resizeImage = (img: HTMLImageElement, maxWidth: number): Promise<string> => {
     return new Promise((resolve, reject) => {
-      if (!img || maxWidth <= 0) {
-        reject(new Error("Ảnh hoặc maxWidth không hợp lệ"));
-        return;
-      }
       const aspectRatio = img.width / img.height;
       const canvasWidth = Math.min(img.width, maxWidth);
       const canvasHeight = canvasWidth / aspectRatio;
-      if (canvasHeight <= 0) {
-        reject(new Error("Tỷ lệ ảnh không hợp lệ"));
-        return;
-      }
-
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = canvasWidth;
       tempCanvas.height = canvasHeight;
       const ctx = tempCanvas.getContext("2d");
-
       if (!ctx) {
         tempCanvas.remove();
         reject(new Error("Không thể tạo context cho canvas tạm"));
         return;
       }
-
       ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
       const result = tempCanvas.toDataURL("image/png");
       tempCanvas.remove();
@@ -215,7 +176,6 @@ export default function ImageInpaintingApp() {
     const aspectRatio = img.width / img.height;
     const canvasWidth = Math.min(img.width, maxWidth);
     const canvasHeight = canvasWidth / aspectRatio;
-    if (canvasWidth <= 0 || canvasHeight <= 0) return;
 
     inputCanvas.width = canvasWidth;
     inputCanvas.height = canvasHeight;
@@ -247,9 +207,6 @@ export default function ImageInpaintingApp() {
 
     ctx.fillStyle = "#F3F4F6";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#1E3A8A";
-    ctx.font = '16px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-    ctx.textAlign = "center";
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -259,14 +216,14 @@ export default function ImageInpaintingApp() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    if (e.button === 0) { // Chuột trái: vẽ
+    if (e.button === 0) {
       setIsDrawing(true);
       setIsErasing(false);
       setPaths((prev) => [
         ...prev,
         { points: [{ x, y }], color: brushColor, width: brushSize },
       ]);
-    } else if (e.button === 2) { // Chuột phải: xóa
+    } else if (e.button === 2) {
       setIsErasing(true);
       setIsDrawing(false);
       setPaths((prev) => [
@@ -310,7 +267,7 @@ export default function ImageInpaintingApp() {
     maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
     paths.forEach((path) => {
       maskCtx.beginPath();
-      maskCtx.strokeStyle = path.color;
+      maskCtx.strokeStyle = path.color === "transparent" ? "black" : path.color;
       maskCtx.lineWidth = path.width;
       maskCtx.lineCap = "round";
       maskCtx.lineJoin = "round";
@@ -378,16 +335,12 @@ export default function ImageInpaintingApp() {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = imageData.startsWith("data:") ? imageData : imageData;
-
       await img.decode();
-      console.log("Đã tải ảnh để đóng dấu", img);
 
       const logo = new Image();
       logo.src = "/logo.png";
       logo.crossOrigin = "anonymous";
-      await logo.decode().catch(() => {
-        throw new Error("Không thể tải logo watermark");
-      });
+      await logo.decode();
 
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
@@ -410,7 +363,6 @@ export default function ImageInpaintingApp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
@@ -425,23 +377,13 @@ export default function ImageInpaintingApp() {
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
       const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
-      console.log("Result URL from TensorArt:", resultUrl);
-
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
-      console.log("Proxied URL:", proxiedUrl);
-
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
 
       const img = new Image();
-      img.onload = () => {
-        console.log("Image loaded successfully:", img.width, img.height);
-        drawResultOnCanvas(img);
-      };
-      img.onerror = () => {
-        console.error("Failed to load watermarked image:", watermarkedImageUrl);
-        setError("Không thể tải ảnh kết quả sau khi thêm watermark");
-      };
+      img.onload = () => drawResultOnCanvas(img);
+      img.onerror = () => setError("Không thể tải ảnh kết quả sau khi thêm watermark");
       img.src = watermarkedImageUrl;
     } catch (err) {
       console.error("Error in handleSubmit:", err);
@@ -453,23 +395,10 @@ export default function ImageInpaintingApp() {
 
   const drawResultOnCanvas = (img: HTMLImageElement) => {
     const outputCanvas = outputCanvasRef.current;
-    if (!outputCanvas) {
-      console.error("outputCanvasRef is null");
-      setError("Canvas không khả dụng");
-      return;
-    }
-    const ctx = outputCanvas.getContext("2d");
-    if (!ctx) {
-      console.error("Canvas context is null");
-      setError("Không thể lấy context của canvas");
-      return;
-    }
+    if (!outputCanvas) return;
 
-    if (img.width === 0 || img.height === 0) {
-      console.error("Image has invalid dimensions:", img.width, img.height);
-      setError("Kích thước ảnh không hợp lệ");
-      return;
-    }
+    const ctx = outputCanvas.getContext("2d");
+    if (!ctx) return;
 
     const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
     const aspectRatio = img.width / img.height;
@@ -481,7 +410,6 @@ export default function ImageInpaintingApp() {
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-    console.log("Image drawn on canvas with size:", canvasWidth, canvasHeight);
   };
 
   const getCombinedImage = async (): Promise<string> => {
@@ -540,229 +468,216 @@ export default function ImageInpaintingApp() {
   };
 
   const getProductQuote = () => {
-    if (!selectedProduct) return "Vui lòng chọn một sản phẩm để xem thông tin.";
+    if (!selectedProduct) return "Chọn sản phẩm để xem thông tin.";
     const allProducts = Object.values(productGroups).flat();
     const product = allProducts.find((p) => p.name === selectedProduct);
     return product ? product.quote : "Không tìm thấy thông tin sản phẩm.";
   };
 
   return (
-    <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
-      <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
-        CaslaQuartz AI
-      </h1>
+    <div className="container mx-auto py-8 px-4 font-sans min-h-screen bg-gray-50 flex flex-col">
+      <h1 className="text-4xl font-bold text-center mb-8 text-blue-900 tracking-tight">CaslaQuartz AI</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
         {/* Cột 1: Tải ảnh & Chọn vật thể */}
-        <div className="flex flex-col space-y-4">
-          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
-            <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
-              <canvas
-                ref={inputCanvasRef}
-                className="max-w-full cursor-crosshair"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onContextMenu={(e) => e.preventDefault()}
-              />
-              {!image && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
-                  <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Tải ảnh lên
-                  </Button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageUpload}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                </div>
-              )}
-            </div>
-
-            {image && (
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={resetCanvas}
-                    className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full self-start"
-                    title="Refresh"
-                  >
-                    <RefreshCw className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    onClick={() => setBrushColor("black")}
-                    className={`w-10 h-10 p-0 rounded-full transition-all self-start ${
-                      brushColor === "black" ? "ring-2 ring-blue-500" : ""
-                    }`}
-                    style={{ backgroundColor: "black" }}
-                    title="Màu đen"
-                  />
-                  <Button
-                    onClick={() => setBrushColor("white")}
-                    className={`w-10 h-10 p-0 rounded-full transition-all self-start ${
-                      brushColor === "white" ? "ring-2 ring-blue-500" : ""
-                    }`}
-                    style={{ backgroundColor: "white", border: "1px solid #ccc" }}
-                    title="Màu trắng"
-                  />
-                  <Button
-                    className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full self-start"
-                    title="Bút vẽ"
-                  >
-                    <Paintbrush className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full self-start"
-                    title="Hướng dẫn"
-                  >
-                    <Info className="h-5 w-5" />
-                  </Button>
-                </div>
-
-                <Tabs defaultValue="brush" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-blue-50 rounded-md">
-                    <TabsTrigger
-                      value="brush"
-                      className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
-                    >
-                      <Paintbrush className="h-4 w-4 mr-1" />
-                      Bút vẽ
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="info"
-                      className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
-                    >
-                      <Info className="h-4 w-4 mr-1" />
-                      Hướng dẫn
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="brush" className="space-y-2 mt-2">
-                    <div>
-                      <label className="text-sm font-medium text-blue-900">Kích thước: {brushSize}px</label>
-                      <Slider
-                        value={[brushSize]}
-                        min={1}
-                        max={50}
-                        step={1}
-                        onValueChange={(value) => setBrushSize(value[0])}
-                        className="mt-1"
-                      />
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="info" className="space-y-2 mt-2">
-                    <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
-                      <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để xóa).</p>
-                      <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-
+        <Card className="p-6 flex flex-col gap-6 bg-white rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-semibold text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
+          <div className="relative bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 h-[400px] overflow-hidden">
+            <canvas
+              ref={inputCanvasRef}
+              className="max-w-full cursor-crosshair rounded-lg"
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+            {!image && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
+                <p className="text-blue-900/70 text-lg font-medium">Tải ảnh lên để bắt đầu</p>
                 <Button
-                  onClick={handleSubmit}
-                  disabled={!image || isProcessing || !selectedProduct}
-                  className="bg-blue-900 hover:bg-blue-800 text-white"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 bg-blue-900 hover:bg-blue-800 text-white rounded-full px-6 py-2 transition-all"
                 >
-                  {isProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Xử lý ảnh
+                  <Upload className="h-4 w-4 mr-2" />
+                  Tải ảnh
                 </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
               </div>
             )}
-          </Card>
-        </div>
+          </div>
+
+          {image && (
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-3 justify-start">
+                <Button
+                  onClick={resetCanvas}
+                  className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full transition-all"
+                  title="Làm mới"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                </Button>
+                <Button
+                  onClick={() => setBrushColor("black")}
+                  className={`w-10 h-10 p-0 rounded-full transition-all ${
+                    brushColor === "black" ? "ring-2 ring-blue-500" : ""
+                  }`}
+                  style={{ backgroundColor: "black" }}
+                  title="Màu đen"
+                />
+                <Button
+                  onClick={() => setBrushColor("white")}
+                  className={`w-10 h-10 p-0 rounded-full transition-all ${
+                    brushColor === "white" ? "ring-2 ring-blue-500" : ""
+                  }`}
+                  style={{ backgroundColor: "white", border: "1px solid #ccc" }}
+                  title="Màu trắng"
+                />
+                <Button
+                  className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full transition-all"
+                  title="Bút vẽ"
+                >
+                  <Paintbrush className="h-5 w-5" />
+                </Button>
+                <Button
+                  className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full transition-all"
+                  title="Hướng dẫn"
+                >
+                  <Info className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <Tabs defaultValue="brush" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-blue-50 rounded-lg">
+                  <TabsTrigger
+                    value="brush"
+                    className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all"
+                  >
+                    <Paintbrush className="h-4 w-4 mr-2" />
+                    Bút vẽ
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="info"
+                    className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all"
+                  >
+                    <Info className="h-4 w-4 mr-2" />
+                    Hướng dẫn
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="brush" className="space-y-2 mt-2">
+                  <label className="text-sm font-medium text-blue-900">Kích thước: {brushSize}px</label>
+                  <Slider
+                    value={[brushSize]}
+                    min={1}
+                    max={50}
+                    step={1}
+                    onValueChange={(value) => setBrushSize(value[0])}
+                    className="mt-1"
+                  />
+                </TabsContent>
+                <TabsContent value="info" className="space-y-2 mt-2">
+                  <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-900">
+                    <p>1. Chọn sản phẩm từ cột bên phải.</p>
+                    <p>2. Dùng chuột trái để vẽ, chuột phải để xóa trên vùng cần xử lý.</p>
+                    <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <Button
+                onClick={handleSubmit}
+                disabled={!image || isProcessing || !selectedProduct}
+                className="bg-blue-900 hover:bg-blue-800 text-white rounded-full py-2 transition-all"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Xử lý ảnh
+              </Button>
+            </div>
+          )}
+        </Card>
 
         {/* Cột 2: Chọn sản phẩm và Quote */}
-        <div className="flex flex-col space-y-4">
-          <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
-            <h2 className="text-xl font-medium text-blue-900 text-left">CaslaQuartz Menu</h2>
-            <div className="flex flex-col gap-1">
-              {Object.keys(productGroups).map((group) => (
-                <div
-                  key={group}
-                  className="relative"
-                  onMouseEnter={() => setOpenGroup(group)}
-                  onMouseLeave={() => setOpenGroup(null)}
+        <Card className="p-6 flex flex-col gap-4 bg-white rounded-xl shadow-lg border border-gray-200 h-full">
+          <h2 className="text-xl font-semibold text-blue-900 text-left">CaslaQuartz Menu</h2>
+          <div className="flex flex-col gap-1">
+            {Object.keys(productGroups).map((group) => (
+              <div
+                key={group}
+                className="relative"
+                onMouseEnter={() => setOpenGroup(group)}
+                onMouseLeave={() => setOpenGroup(null)}
+              >
+                <Button
+                  className="w-full text-left py-2 px-4 bg-gray-100 hover:bg-gray-200 text-blue-900 transition-all rounded-lg text-sm font-medium"
+                  style={{ fontSize: "14px" }}
                 >
-                  <Button
-                    className="w-full text-left py-2 px-3 bg-gray-200 hover:bg-gray-300 text-blue-900 transition-colors text-sm"
-                    style={{ fontSize: "14px" }}
-                  >
-                    {group}
-                  </Button>
-                  {openGroup === group && (
-                    <div className="absolute left-0 right-0 bg-white border border-gray-300 rounded shadow-md z-10 mt-1">
-                      {productGroups[group as keyof typeof productGroups].map((product) => (
-                        <Button
-                          key={product.name}
-                          onClick={() => setSelectedProduct(product.name)}
-                          className={`w-full text-left py-1 px-3 hover:bg-gray-100 transition-colors text-sm ${
-                            selectedProduct === product.name ? "bg-blue-100" : ""
-                          }`}
-                          style={{ fontSize: "12px" }}
-                        >
-                          {product.name}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-auto">
-              <Alert className="bg-black text-white p-4 rounded-md shadow-inner transition-all duration-300">
-                <AlertTitle className="text-sm font-medium text-left">Ý nghĩa sản phẩm</AlertTitle>
-                <AlertDescription className="text-xs text-left">{getProductQuote()}</AlertDescription>
-              </Alert>
-            </div>
-          </Card>
-        </div>
+                  {group}
+                </Button>
+                {openGroup === group && (
+                  <div className="absolute left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-md z-10 mt-1 max-h-48 overflow-y-auto">
+                    {productGroups[group as keyof typeof productGroups].map((product) => (
+                      <Button
+                        key={product.name}
+                        onClick={() => setSelectedProduct(product.name)}
+                        className={`w-full text-left py-1 px-4 hover:bg-blue-50 transition-all text-sm ${
+                          selectedProduct === product.name ? "bg-blue-100 text-blue-900" : "text-blue-900"
+                        }`}
+                        style={{ fontSize: "12px" }}
+                      >
+                        {product.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-auto">
+            <Alert className="bg-black text-white p-4 rounded-lg shadow-inner transition-all duration-300">
+              <AlertTitle className="text-sm font-medium text-left">Ý nghĩa sản phẩm</AlertTitle>
+              <AlertDescription className="text-xs text-left">{getProductQuote()}</AlertDescription>
+            </Alert>
+          </div>
+        </Card>
 
         {/* Cột 3: Kết quả xử lý */}
-        <div className="flex flex-col space-y-4">
-          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
-            <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
-            <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
-              <canvas ref={outputCanvasRef} style={{ display: activeCanvas === "canvas2" ? "block" : "none" }} />
-              {isProcessing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                  <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
-                  <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
-                </div>
-              )}
-            </div>
-
-            <Button
-              onClick={downloadImage}
-              disabled={!inpaintedImage}
-              className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Tải kết quả
-            </Button>
-
-            {error && (
-              <Alert variant="destructive" className="mt-2 p-4">
-                <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
-                <AlertDescription className="text-sm">{error}</AlertDescription>
-              </Alert>
+        <Card className="p-6 flex flex-col gap-6 bg-white rounded-xl shadow-lg border border-gray-200 h-full">
+          <h2 className="text-xl font-semibold text-blue-900">Kết Quả Xử Lý</h2>
+          <div className="relative bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 h-[400px] overflow-hidden">
+            <canvas ref={outputCanvasRef} className="max-w-full rounded-lg" style={{ display: activeCanvas === "canvas2" ? "block" : "none" }} />
+            {isProcessing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-200/80">
+                <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
+                <p className="text-blue-900/70 text-lg font-medium">Đang xử lý ảnh...</p>
+              </div>
             )}
-          </Card>
-        </div>
+          </div>
+          <Button
+            onClick={downloadImage}
+            disabled={!inpaintedImage}
+            className="bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full py-2 transition-all"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Tải kết quả
+          </Button>
+          {error && (
+            <Alert variant="destructive" className="mt-2 p-4 rounded-lg">
+              <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
+              <AlertDescription className="text-sm">{error}</AlertDescription>
+            </Alert>
+          )}
+        </Card>
       </div>
 
       <footer className="mt-12 py-4 text-center text-sm text-blue-900/70">
