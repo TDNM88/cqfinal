@@ -79,7 +79,6 @@ const products = Object.fromEntries(
   ])
 );
 
-// Vô hiệu hóa prerendering tĩnh
 export const dynamic = "force-dynamic";
 
 export default function ImageInpaintingApp() {
@@ -160,10 +159,11 @@ export default function ImageInpaintingApp() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setPaths([]);
-    setInpaintedImage(null);
+    setPaths([]); // Xóa mask ở Canvas 1
     setError(null);
     setActiveCanvas("canvas1");
+    setImage(null); // Xóa ảnh cũ ở Canvas 1
+    setResizedImageData(""); // Xóa dữ liệu ảnh resized
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -236,30 +236,53 @@ export default function ImageInpaintingApp() {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     if (!inputCanvasRef.current) return;
+
     setIsDrawing(true);
-    setIsErasing(e.button === 2);
+    const isRightClick = e.button === 2;
+    setIsErasing(isRightClick);
     setActiveCanvas("canvas1");
+
     const rect = inputCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: isErasing ? "black" : "white", width: brushSize },
-    ]);
+
+    if (!isRightClick) {
+      // Chuột trái: Vẽ nét mới
+      setPaths((prev) => [
+        ...prev,
+        {
+          points: [{ x, y }],
+          color: "white",
+          width: brushSize,
+        },
+      ]);
+    } else {
+      // Chuột phải: Xóa mask tại vị trí
+      eraseAtPosition(x, y);
+    }
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !inputCanvasRef.current) return;
+
     const rect = inputCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setPaths((prev) => {
-      const newPaths = [...prev];
-      const currentPath = newPaths[newPaths.length - 1];
-      currentPath.points.push({ x, y });
-      return newPaths;
-    });
-    redrawCanvas();
+
+    if (!isErasing) {
+      // Chuột trái: Tiếp tục vẽ
+      setPaths((prev) => {
+        const newPaths = [...prev];
+        const currentPath = newPaths[newPaths.length - 1];
+        currentPath.points.push({ x, y });
+        return newPaths;
+      });
+    } else {
+      // Chuột phải: Tiếp tục xóa
+      eraseAtPosition(x, y);
+    }
+
+    requestAnimationFrame(redrawCanvas); // Vẽ mượt hơn
   };
 
   const stopDrawing = () => {
@@ -268,39 +291,19 @@ export default function ImageInpaintingApp() {
     redrawCanvas();
   };
 
-  const startDrawingTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!inputCanvasRef.current) return;
-    setIsDrawing(true);
-    setActiveCanvas("canvas1");
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: "white", width: brushSize },
-    ]);
-  };
+  const eraseAtPosition = (x: number, y: number) => {
+    const eraseRadius = brushSize / 2;
 
-  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !inputCanvasRef.current) return;
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
     setPaths((prev) => {
-      const newPaths = [...prev];
-      const currentPath = newPaths[newPaths.length - 1];
-      currentPath.points.push({ x, y });
+      const newPaths = prev.map((path) => ({
+        ...path,
+        points: path.points.filter((point) => {
+          const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
+          return distance > eraseRadius;
+        }),
+      })).filter((path) => path.points.length > 0);
       return newPaths;
     });
-    redrawCanvas();
-  };
-
-  const stopDrawingTouch = () => {
-    setIsDrawing(false);
-    redrawCanvas();
   };
 
   const redrawCanvas = () => {
@@ -313,10 +316,16 @@ export default function ImageInpaintingApp() {
     if (!inputCtx || !maskCtx) return;
 
     maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+
     paths.forEach((path) => {
+      if (path.points.length === 0) return;
+
       maskCtx.beginPath();
       maskCtx.strokeStyle = path.color;
       maskCtx.lineWidth = path.width;
+      maskCtx.lineCap = "round";
+      maskCtx.lineJoin = "round";
+
       path.points.forEach((point, index) => {
         if (index === 0) maskCtx.moveTo(point.x, point.y);
         else maskCtx.lineTo(point.x, point.y);
@@ -346,7 +355,7 @@ export default function ImageInpaintingApp() {
     resizedImg.onerror = () => setError("Không thể cập nhật preview mask");
     resizedImg.src = resizedImageData;
   };
-
+  
   const deletePathAtPosition = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
@@ -401,13 +410,24 @@ export default function ImageInpaintingApp() {
     link.remove();
   };
 
-  const handleReloadImage = () => {
+  const handleNewImage = () => {
+    // Nút "Tải Ảnh Mới": Xóa mọi thứ ở Canvas 1
     setImage(null);
     setPaths([]);
-    setInpaintedImage(null);
-    setError(null);
     setResizedImageData("");
+    setError(null);
+    setActiveCanvas("canvas1");
     fileInputRef.current?.click();
+  };
+
+  const handleRefresh = () => {
+    // Nút "Refresh": Chỉ xóa mask, giữ ảnh
+    setPaths([]);
+    setError(null);
+    setActiveCanvas("canvas1");
+    if (image && resizedImageData) {
+      drawImageOnCanvas(image, resizedImageData); // Vẽ lại ảnh gốc
+    }
   };
 
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -648,17 +668,18 @@ export default function ImageInpaintingApp() {
               <div className="flex flex-col gap-4">
                 <div className="flex gap-4 justify-between">
                   <Button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={handleNewImage}
                     className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Tải ảnh mới
                   </Button>
                   <Button
-                    onClick={handleReloadImage}
+                    onClick={handleRefresh}
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Xóa mask
                   </Button>
                   <Button
                     onClick={saveCanvasState}
@@ -702,7 +723,7 @@ export default function ImageInpaintingApp() {
                   <TabsContent value="info" className="space-y-2 mt-2">
                     <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
                       <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy, nhấp để xóa).</p>
+                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để xóa mask).</p>
                       <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
                     </div>
                   </TabsContent>
