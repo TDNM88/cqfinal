@@ -704,6 +704,8 @@ export default function ImageInpaintingApp() {
                       Hướng dẫn
                     </TabsTrigger>
                   </TabsList>
+                 ाधिक
+
                   <TabsContent value="brush" className="space-y-2 mt-2">
                     <div>
                       <label className="text-sm font-medium text-blue-900">Kích thước: {brushSize}px</label>
@@ -743,7 +745,26 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
 
-       {/* Cột 2: Chọn sản phẩm */}
+        {/* Cột 2: Kết quả */}
+        <div className="flex flex-col space-y-4">
+          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-xl font-medium text-blue-900">Kết quả</h2>
+            <div className="bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
+              <canvas ref={outputCanvasRef} className="max-w-full" />
+            </div>
+            {inpaintedImage && (
+              <Button
+                onClick={downloadImage}
+                className="bg-blue-900 hover:bg-blue-800 text-white"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Tải ảnh kết quả
+              </Button>
+            )}
+          </Card>
+        </div>
+
+        {/* Cột 3: Chọn sản phẩm */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
             <h2 className="text-xl font-medium text-blue-900">Chọn Sản Phẩm</h2>
@@ -787,38 +808,12 @@ export default function ImageInpaintingApp() {
         </div>
       </div>
 
-        {/* Cột 3: Kết quả xử lý */}
-        <div className="flex flex-col space-y-4">
-          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
-            <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
-            <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
-              <canvas ref={outputCanvasRef} style={{ display: activeCanvas === "canvas2" ? "block" : "none" }} />
-              {isProcessing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                  <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
-                  <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
-                </div>
-              )}
-            </div>
-
-            <Button
-              onClick={downloadImage}
-              disabled={!inpaintedImage}
-              className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Tải kết quả
-            </Button>
-
-            {error && (
-              <Alert variant="destructive" className="mt-2 p-4">
-                <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
-                <AlertDescription className="text-sm">{error}</AlertDescription>
-              </Alert>
-            )}
-          </Card>
-        </div>
-      </div>,
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertTitle>Lỗi</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       <footer className="mt-12 py-4 text-center text-sm text-blue-900/70">
         <p>Liên hệ: support@caslaquartz.com | Hotline: 1234-567-890</p>
         <p>© 2025 CaslaQuartz. All rights reserved.</p>
