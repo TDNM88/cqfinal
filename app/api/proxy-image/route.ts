@@ -1,9 +1,11 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextResponse } from 'next/server';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { url } = req.query;
-  if (typeof url !== 'string') {
-    return res.status(400).json({ error: 'URL is required' });
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const url = searchParams.get('url');
+
+  if (!url || typeof url !== 'string') {
+    return NextResponse.json({ error: 'URL is required' }, { status: 400 });
   }
 
   try {
@@ -11,13 +13,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
     }
-    const imageBuffer = await response.buffer();
+    const imageBuffer = await response.arrayBuffer();
 
-    res.setHeader('Content-Type', response.headers.get('Content-Type') || 'image/png');
-    res.setHeader('Cache-Control', 'no-store'); // Không cache vì URL có thể hết hạn
-    res.send(imageBuffer);
+    return new NextResponse(imageBuffer, {
+      headers: {
+        'Content-Type': response.headers.get('Content-Type') || 'image/png',
+        'Cache-Control': 'no-store',
+      },
+    });
   } catch (error) {
     console.error('Proxy error:', error);
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
