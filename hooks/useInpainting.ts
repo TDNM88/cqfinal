@@ -1,91 +1,144 @@
-import { useCallback } from "react";
+// hooks/useInpainting.ts
+import { useState } from 'react';
 
-/**
- * Hook để xử lý inpainting qua API Tensor Art
- * @returns {object} - Đối tượng chứa hàm processInpainting
- */
-export const useInpainting = () => {
-  const processInpainting = useCallback(
-    async (
-      imageBase64: string,
-      productImageBase64: string,
-      maskBase64: string
-    ): Promise<string> => {
-      if (!imageBase64 || !imageBase64.startsWith("data:image/")) {
-        throw new Error("Dữ liệu ảnh gốc không hợp lệ, yêu cầu định dạng base64");
-      }
-      if (!productImageBase64 || !productImageBase64.startsWith("data:image/")) {
-        throw new Error("Dữ liệu ảnh sản phẩm không hợp lệ, yêu cầu định dạng base64");
-      }
-      if (!maskBase64 || !maskBase64.startsWith("data:image/")) {
-        throw new Error("Dữ liệu mask không hợp lệ, yêu cầu định dạng base64");
-      }
+const TENSOR_ART_API_URL = "https://ap-east-1.tensorart.cloud/v1";
+const WORKFLOW_TEMPLATE_ID = "837405094118019506";
 
+export function useInpainting() {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+
+  async function uploadImageToTensorArt(imageData: string): Promise<string> {
+    try {
+      const response = await fetch(`${TENSOR_ART_API_URL}/resource/image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
+        },
+        body: JSON.stringify({ expireSec: 7200 }),
+      });
+
+      if (!response.ok) throw new Error(`POST failed: ${response.status}`);
+      const resourceResponse: { putUrl: string; resourceId: string; headers: Record<string, string> } = await response.json();
+
+      const imageBlob = await fetch(imageData).then((res) => res.blob());
+      const putResponse = await fetch(resourceResponse.putUrl, {
+        method: "PUT",
+        headers: resourceResponse.headers || { "Content-Type": "image/png" },
+        body: imageBlob,
+      });
+
+      if (!putResponse.ok) throw new Error(`PUT failed: ${putResponse.status}`);
+      return resourceResponse.resourceId;
+    } catch (error) {
+      console.error("Upload error:", error);
+      throw error instanceof Error ? error : new Error("Unknown upload error");
+    }
+  }
+
+  async function createInpaintingJob(uploadedImageId: string, productImageId: string, maskImageId: string): Promise<string> {
+    try {
+      const workflowData = {
+        request_id: Date.now().toString(),
+        templateId: WORKFLOW_TEMPLATE_ID,
+        fields: {
+          fieldAttrs: [
+            { nodeId: "731", fieldName: "image", fieldValue: uploadedImageId },
+            { nodeId: "735", fieldName: "image", fieldValue: productImageId },
+            { nodeId: "745", fieldName: "image", fieldValue: maskImageId },
+          ],
+        },
+      };
+
+      const response = await fetch(`${TENSOR_ART_API_URL}/jobs/workflow/template`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
+        },
+        body: JSON.stringify(workflowData),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data: { job: { id: string } } = await response.json();
+      if (!data.job?.id) throw new Error("Missing job ID");
+      return data.job.id;
+    } catch (error) {
+      console.error("Job creation error:", error);
+      throw error instanceof Error ? error : new Error("Unknown job creation error");
+    }
+  }
+
+  async function pollJobStatus(jobId: string, timeout: number = 300000): Promise<string> {
+    const startTime = Date.now();
+    const url = `${TENSOR_ART_API_URL}/jobs/${jobId}`;
+
+    while (Date.now() - startTime < timeout) {
       try {
-        const formData = new FormData();
-        formData.append("image", imageBase64);
-        formData.append("mask", maskBase64);
-        formData.append("product_image", productImageBase64);
-
-        console.log("Sending request to Tensor Art API...");
-        const response = await fetch("https://cqf-api-2.onrender.com/api/inpaint", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`API request failed! Status: ${response.status}, Message: ${errorText}`);
-        }
-
-        const data = await response.json();
-        const imageUrl = data.imageUrl;
-        console.log("Received imageUrl from API:", imageUrl);
-
-        if (!imageUrl || typeof imageUrl !== "string") {
-          throw new Error("API did not return a valid imageUrl");
-        }
-
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`;
-        console.log("Fetching image via proxy:", proxyUrl);
-        const imageResponse = await fetch(proxyUrl, {
-          method: "GET",
+        const response = await fetch(url, {
           headers: {
-            "Accept": "image/*",
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}`,
           },
         });
 
-        if (!imageResponse.ok) {
-          const errorText = await imageResponse.text();
-          throw new Error(`Failed to fetch image via proxy: ${proxyUrl}, Status: ${imageResponse.status}, Message: ${errorText}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data: {
+          job: {
+            status: string;
+            resultUrl?: string;
+            successInfo?: { images?: { url: string }[] };
+            output?: { url: string }[];
+            failureInfo?: { reason?: string };
+          };
+        } = await response.json();
+        console.log("Job status response:", data);
+
+        const job = data.job;
+        if (job.status === "SUCCESS") {
+          const resultUrl = job.resultUrl || job.successInfo?.images?.[0]?.url || job.output?.[0]?.url;
+          if (!resultUrl) throw new Error("No result URL found in SUCCESS response");
+          return resultUrl;
+        } else if (job.status === "FAILED") {
+          throw new Error(`Job failed: ${job.failureInfo?.reason || "Unknown reason"}`);
+        } else if (job.status === "CANCELLED") {
+          throw new Error("Job was cancelled");
         }
 
-        const imageBlob = await imageResponse.blob();
-        console.log("Image blob size:", imageBlob.size);
-
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            if (result && result.startsWith("data:image/")) {
-              console.log("Converted to base64, length:", result.length);
-              resolve(result);
-            } else {
-              reject(new Error("Invalid base64 data from image"));
-            }
-          };
-          reader.onerror = () => reject(new Error("Failed to convert image to base64"));
-          reader.readAsDataURL(imageBlob);
-        });
-
-        return base64;
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       } catch (error) {
-        console.error("Error in processInpainting:", error);
-        throw error instanceof Error ? error : new Error("Unknown error occurred during inpainting");
+        console.error("Polling error:", error);
+        throw error instanceof Error ? error : new Error("Unknown polling error");
       }
-    },
-    []
-  );
+    }
+    throw new Error(`Timeout after ${timeout / 1000} seconds`);
+  }
 
-  return { processInpainting };
-};
+  async function processInpainting(uploadedImageData: string, productImageData: string, maskImageData: string): Promise<string> {
+    setLoading(true);
+    setError(null);
+    setResultUrl(null);
+
+    try {
+      const [uploadedImageId, productImageId, maskImageId] = await Promise.all([
+        uploadImageToTensorArt(uploadedImageData),
+        uploadImageToTensorArt(productImageData),
+        uploadImageToTensorArt(maskImageData),
+      ]);
+
+      const jobId = await createInpaintingJob(uploadedImageId, productImageId, maskImageId);
+      const result = await pollJobStatus(jobId);
+      setResultUrl(result);
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return { loading, error, resultUrl, processInpainting };
+}
