@@ -434,34 +434,39 @@ export default function ImageInpaintingApp() {
   };
 
   const addWatermark = async (imageData: string): Promise<string> => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = imageData.startsWith("data:") ? imageData : imageData;
+    try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = imageData.startsWith("data:") ? imageData : imageData;
 
-    await img.decode();
-    console.log("Đã tải ảnh để đóng dấu");
+        await img.decode();
+        console.log("Đã tải ảnh để đóng dấu", img);
 
-    const logo = new Image();
-    logo.src = "/logo.png";
-    logo.crossOrigin = "anonymous";
-    await logo.decode().catch(() => {
-      throw new Error("Không thể tải logo watermark");
-    });
+        const logo = new Image();
+        logo.src = "/logo.png";
+        logo.crossOrigin = "anonymous";
+        await logo.decode().catch(() => {
+            throw new Error("Không thể tải logo watermark");
+        });
 
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Không thể tạo context cho canvas");
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Không thể tạo context cho canvas");
 
-    ctx.drawImage(img, 0, 0);
-    const logoSize = img.width * 0.2;
-    const logoX = img.width - logoSize - 10;
-    const logoY = img.height - logoSize - 10;
-    ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+        ctx.drawImage(img, 0, 0);
+        const logoSize = img.width * 0.2;
+        const logoX = img.width - logoSize - 10;
+        const logoY = img.height - logoSize - 10;
+        ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
 
-    return canvas.toDataURL("image/png");
-  };
+        return canvas.toDataURL("image/png");
+    } catch (error) {
+        console.error("Error in addWatermark:", error);
+        throw error;
+    }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
