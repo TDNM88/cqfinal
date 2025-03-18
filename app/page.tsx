@@ -4,9 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw, Save } from "lucide-react";
+import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useInpainting } from "@/hooks/useInpainting";
 
@@ -87,14 +86,15 @@ export default function ImageInpaintingApp() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [resizedImageData, setResizedImageData] = useState<string>("");
   const [brushSize, setBrushSize] = useState(20);
+  const [brushColor, setBrushColor] = useState<"black" | "white">("black");
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [maskOpacity] = useState(0.5);
   const [isProcessing, setIsProcessing] = useState(false);
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [paths, setPaths] = useState<Path[]>([]);
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
 
@@ -160,9 +160,7 @@ export default function ImageInpaintingApp() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setPaths([]);
-    setInpaintedImage(null);
-    setError(null);
+    resetCanvas();
     setActiveCanvas("canvas1");
 
     const reader = new FileReader();
@@ -184,6 +182,27 @@ export default function ImageInpaintingApp() {
       img.crossOrigin = "anonymous";
     };
     reader.readAsDataURL(file);
+  };
+
+  const resetCanvas = () => {
+    setImage(null);
+    setResizedImageData("");
+    setPaths([]);
+    setInpaintedImage(null);
+    setError(null);
+    setSelectedProduct(null);
+    setOpenGroup(null);
+    setActiveCanvas(null);
+    const inputCtx = inputCanvasRef.current?.getContext("2d");
+    const outputCtx = outputCanvasRef.current?.getContext("2d");
+    if (inputCtx && inputCanvasRef.current) {
+      inputCtx.fillStyle = "#F3F4F6";
+      inputCtx.fillRect(0, 0, inputCanvasRef.current.width, inputCanvasRef.current.height);
+    }
+    if (outputCtx && outputCanvasRef.current) {
+      outputCtx.fillStyle = "#F3F4F6";
+      outputCtx.fillRect(0, 0, outputCanvasRef.current.width, outputCanvasRef.current.height);
+    }
   };
 
   const drawImageOnCanvas = (img: HTMLImageElement, resizedData: string) => {
@@ -236,23 +255,34 @@ export default function ImageInpaintingApp() {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     if (!inputCanvasRef.current) return;
-    setIsDrawing(true);
-    setIsErasing(e.button === 2);
-    setActiveCanvas("canvas1");
     const rect = inputCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: isErasing ? "black" : "white", width: brushSize },
-    ]);
+
+    if (e.button === 0) { // Chuột trái: vẽ
+      setIsDrawing(true);
+      setIsErasing(false);
+      setPaths((prev) => [
+        ...prev,
+        { points: [{ x, y }], color: brushColor, width: brushSize },
+      ]);
+    } else if (e.button === 2) { // Chuột phải: xóa
+      setIsErasing(true);
+      setIsDrawing(false);
+      setPaths((prev) => [
+        ...prev,
+        { points: [{ x, y }], color: "transparent", width: brushSize },
+      ]);
+    }
+    setActiveCanvas("canvas1");
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !inputCanvasRef.current) return;
+    if (!inputCanvasRef.current || (!isDrawing && !isErasing)) return;
     const rect = inputCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
     setPaths((prev) => {
       const newPaths = [...prev];
       const currentPath = newPaths[newPaths.length - 1];
@@ -265,41 +295,6 @@ export default function ImageInpaintingApp() {
   const stopDrawing = () => {
     setIsDrawing(false);
     setIsErasing(false);
-    redrawCanvas();
-  };
-
-  const startDrawingTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!inputCanvasRef.current) return;
-    setIsDrawing(true);
-    setActiveCanvas("canvas1");
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: "white", width: brushSize },
-    ]);
-  };
-
-  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !inputCanvasRef.current) return;
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    setPaths((prev) => {
-      const newPaths = [...prev];
-      const currentPath = newPaths[newPaths.length - 1];
-      currentPath.points.push({ x, y });
-      return newPaths;
-    });
-    redrawCanvas();
-  };
-
-  const stopDrawingTouch = () => {
-    setIsDrawing(false);
     redrawCanvas();
   };
 
@@ -317,11 +312,19 @@ export default function ImageInpaintingApp() {
       maskCtx.beginPath();
       maskCtx.strokeStyle = path.color;
       maskCtx.lineWidth = path.width;
+      maskCtx.lineCap = "round";
+      maskCtx.lineJoin = "round";
       path.points.forEach((point, index) => {
         if (index === 0) maskCtx.moveTo(point.x, point.y);
         else maskCtx.lineTo(point.x, point.y);
       });
-      maskCtx.stroke();
+      if (path.color === "transparent") {
+        maskCtx.globalCompositeOperation = "destination-out";
+        maskCtx.stroke();
+        maskCtx.globalCompositeOperation = "source-over";
+      } else {
+        maskCtx.stroke();
+      }
     });
 
     updateMaskPreview();
@@ -345,69 +348,6 @@ export default function ImageInpaintingApp() {
     };
     resizedImg.onerror = () => setError("Không thể cập nhật preview mask");
     resizedImg.src = resizedImageData;
-  };
-
-  const deletePathAtPosition = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const maskCanvas = maskCanvasRef.current;
-    if (!maskCanvas) return;
-    const rect = maskCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    let closestPathIndex = -1;
-    let minDistance = Infinity;
-
-    paths.forEach((path, index) => {
-      path.points.forEach((point) => {
-        const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestPathIndex = index;
-        }
-      });
-    });
-
-    if (closestPathIndex !== -1 && minDistance < 10) {
-      setPaths((prev) => prev.filter((_, i) => i !== closestPathIndex));
-      redrawCanvas();
-    }
-  };
-
-  const handleGroupSelect = (group: string) => {
-    setSelectedGroup(group);
-    setSelectedProduct(null);
-  };
-
-  const handleProductSelect = (productName: string) => {
-    if (!products[productName as keyof typeof products]) {
-      setError("Sản phẩm không hợp lệ");
-      return;
-    }
-    setSelectedProduct(productName);
-    setError(null);
-  };
-
-  const saveCanvasState = () => {
-    const canvas = inputCanvasRef.current;
-    if (!canvas) {
-      setError("Không thể lưu canvas vì canvas không tồn tại");
-      return;
-    }
-    const dataURL = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.download = "canvas-state.png";
-    link.href = dataURL;
-    link.click();
-    link.remove();
-  };
-
-  const handleReloadImage = () => {
-    setImage(null);
-    setPaths([]);
-    setInpaintedImage(null);
-    setError(null);
-    setResizedImageData("");
-    fileInputRef.current?.click();
   };
 
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -435,65 +375,64 @@ export default function ImageInpaintingApp() {
 
   const addWatermark = async (imageData: string): Promise<string> => {
     try {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = imageData.startsWith("data:") ? imageData : imageData;
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = imageData.startsWith("data:") ? imageData : imageData;
 
-        await img.decode();
-        console.log("Đã tải ảnh để đóng dấu", img);
+      await img.decode();
+      console.log("Đã tải ảnh để đóng dấu", img);
 
-        const logo = new Image();
-        logo.src = "/logo.png";
-        logo.crossOrigin = "anonymous";
-        await logo.decode().catch(() => {
-            throw new Error("Không thể tải logo watermark");
-        });
+      const logo = new Image();
+      logo.src = "/logo.png";
+      logo.crossOrigin = "anonymous";
+      await logo.decode().catch(() => {
+        throw new Error("Không thể tải logo watermark");
+      });
 
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Không thể tạo context cho canvas");
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Không thể tạo context cho canvas");
 
-        ctx.drawImage(img, 0, 0);
-        const logoSize = img.width * 0.2;
-        const logoX = img.width - logoSize - 10;
-        const logoY = img.height - logoSize - 10;
-        ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+      ctx.drawImage(img, 0, 0);
+      const logoSize = img.width * 0.2;
+      const logoX = img.width - logoSize - 10;
+      const logoY = img.height - logoSize - 10;
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
 
-        return canvas.toDataURL("image/png");
+      return canvas.toDataURL("image/png");
     } catch (error) {
-        console.error("Error in addWatermark:", error);
-        throw error;
+      console.error("Error in addWatermark:", error);
+      throw error;
     }
-};
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
-  
+
     try {
       setIsProcessing(true);
       setError(null);
       setActiveCanvas("canvas2");
-  
+
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
       const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
       console.log("Result URL from TensorArt:", resultUrl);
-  
-      // Dùng proxy để tải ảnh từ resultUrl
+
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       console.log("Proxied URL:", proxiedUrl);
-  
+
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
-  
+
       const img = new Image();
       img.onload = () => {
         console.log("Image loaded successfully:", img.width, img.height);
@@ -564,14 +503,24 @@ export default function ImageInpaintingApp() {
       throw new Error("Không thể tạo context cho mask BW");
     }
 
-    const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    maskCtxBW.fillStyle = "white";
+    maskCtxBW.fillRect(0, 0, maskCanvasBW.width, maskCanvasBW.height);
+    maskCtxBW.drawImage(maskCanvas, 0, 0);
+    const maskImageData = maskCtxBW.getImageData(0, 0, maskCanvasBW.width, maskCanvasBW.height);
     const maskData = maskImageData.data;
 
     for (let i = 0; i < maskData.length; i += 4) {
-      const maskValue = maskData[i];
-      maskCtxBW.fillStyle = maskValue > 0 ? "white" : "black";
-      maskCtxBW.fillRect((i / 4) % inputCanvas.width, Math.floor((i / 4) / inputCanvas.width), 1, 1);
+      const r = maskData[i];
+      const g = maskData[i + 1];
+      const b = maskData[i + 2];
+      if (r !== 255 || g !== 255 || b !== 255) {
+        maskData[i] = 0;
+        maskData[i + 1] = 0;
+        maskData[i + 2] = 0;
+        maskData[i + 3] = 255;
+      }
     }
+    maskCtxBW.putImageData(maskImageData, 0, 0);
 
     const result = maskCanvasBW.toDataURL("image/png");
     maskCanvasBW.remove();
@@ -617,10 +566,6 @@ export default function ImageInpaintingApp() {
                 onMouseUp={stopDrawing}
                 onMouseLeave={stopDrawing}
                 onContextMenu={(e) => e.preventDefault()}
-                onTouchStart={startDrawingTouch}
-                onTouchMove={drawTouch}
-                onTouchEnd={stopDrawingTouch}
-                onClick={deletePathAtPosition}
               />
               {!image && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -646,26 +591,41 @@ export default function ImageInpaintingApp() {
 
             {image && (
               <div className="flex flex-col gap-4">
-                <div className="flex gap-4 justify-between">
+                <div className="flex flex-col gap-2">
                   <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
+                    onClick={resetCanvas}
+                    className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full self-start"
+                    title="Refresh"
                   >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Tải ảnh mới
+                    <RefreshCw className="h-5 w-5" />
                   </Button>
                   <Button
-                    onClick={handleReloadImage}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
+                    onClick={() => setBrushColor("black")}
+                    className={`w-10 h-10 p-0 rounded-full transition-all self-start ${
+                      brushColor === "black" ? "ring-2 ring-blue-500" : ""
+                    }`}
+                    style={{ backgroundColor: "black" }}
+                    title="Màu đen"
+                  />
+                  <Button
+                    onClick={() => setBrushColor("white")}
+                    className={`w-10 h-10 p-0 rounded-full transition-all self-start ${
+                      brushColor === "white" ? "ring-2 ring-blue-500" : ""
+                    }`}
+                    style={{ backgroundColor: "white", border: "1px solid #ccc" }}
+                    title="Màu trắng"
+                  />
+                  <Button
+                    className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full self-start"
+                    title="Bút vẽ"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <Paintbrush className="h-5 w-5" />
                   </Button>
                   <Button
-                    onClick={saveCanvasState}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
+                    className="w-10 h-10 p-0 bg-gray-200 hover:bg-gray-300 text-blue-900 rounded-full self-start"
+                    title="Hướng dẫn"
                   >
-                    <Save className="h-4 w-4 mr-2" />
-                    Lưu ảnh
+                    <Info className="h-5 w-5" />
                   </Button>
                 </div>
 
@@ -702,7 +662,7 @@ export default function ImageInpaintingApp() {
                   <TabsContent value="info" className="space-y-2 mt-2">
                     <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
                       <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy, nhấp để xóa).</p>
+                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để xóa).</p>
                       <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
                     </div>
                   </TabsContent>
@@ -728,42 +688,45 @@ export default function ImageInpaintingApp() {
         {/* Cột 2: Chọn sản phẩm và Quote */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
-            <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
-            <Select onValueChange={handleGroupSelect}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Chọn nhóm sản phẩm" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.keys(productGroups).map((groupName) => (
-                  <SelectItem key={groupName} value={groupName}>
-                    {groupName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {selectedGroup && (
-              <div className="flex flex-wrap gap-2">
-                {productGroups[selectedGroup as keyof typeof productGroups].map((product) => (
+            <h2 className="text-xl font-medium text-blue-900 text-left">CaslaQuartz Menu</h2>
+            <div className="flex flex-col gap-1">
+              {Object.keys(productGroups).map((group) => (
+                <div
+                  key={group}
+                  className="relative"
+                  onMouseEnter={() => setOpenGroup(group)}
+                  onMouseLeave={() => setOpenGroup(null)}
+                >
                   <Button
-                    key={product.name}
-                    onClick={() => handleProductSelect(product.name)}
-                    className={`flex-1 min-w-[120px] ${
-                      selectedProduct === product.name
-                        ? "bg-blue-900 text-white hover:bg-blue-800"
-                        : "bg-gray-200 text-blue-900 hover:bg-gray-300"
-                    }`}
+                    className="w-full text-left py-2 px-3 bg-gray-200 hover:bg-gray-300 text-blue-900 transition-colors text-sm"
+                    style={{ fontSize: "14px" }}
                   >
-                    {product.name}
+                    {group}
                   </Button>
-                ))}
-              </div>
-            )}
+                  {openGroup === group && (
+                    <div className="absolute left-0 right-0 bg-white border border-gray-300 rounded shadow-md z-10 mt-1">
+                      {productGroups[group as keyof typeof productGroups].map((product) => (
+                        <Button
+                          key={product.name}
+                          onClick={() => setSelectedProduct(product.name)}
+                          className={`w-full text-left py-1 px-3 hover:bg-gray-100 transition-colors text-sm ${
+                            selectedProduct === product.name ? "bg-blue-100" : ""
+                          }`}
+                          style={{ fontSize: "12px" }}
+                        >
+                          {product.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
             <div className="mt-auto">
-              <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : ""}`}>
-                <AlertTitle>Ý nghĩa sản phẩm</AlertTitle>
-                <AlertDescription>{getProductQuote()}</AlertDescription>
+              <Alert className="bg-black text-white p-4 rounded-md shadow-inner transition-all duration-300">
+                <AlertTitle className="text-sm font-medium text-left">Ý nghĩa sản phẩm</AlertTitle>
+                <AlertDescription className="text-xs text-left">{getProductQuote()}</AlertDescription>
               </Alert>
             </div>
           </Card>
