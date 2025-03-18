@@ -470,40 +470,38 @@ export default function ImageInpaintingApp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!image) {
-      setError("Vui lòng tải ảnh trước khi xử lý");
+  
+    if (!image || !selectedProduct || paths.length === 0) {
+      setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
-    if (!selectedProduct || !products[selectedProduct as keyof typeof products]) {
-      setError("Vui lòng chọn một sản phẩm hợp lệ");
-      return;
-    }
-    if (paths.length === 0) {
-      setError("Vui lòng vẽ mask trước khi xử lý");
-      return;
-    }
-
+  
     try {
       setIsProcessing(true);
       setError(null);
       setActiveCanvas("canvas2");
-
+  
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-      const resultBase64 = await processInpainting(resizedImageData, productImageBase64, maskImage);
-      const watermarkedImageUrl = await addWatermark(resultBase64);
-
+      const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
+      console.log("Result URL from TensorArt:", resultUrl);
+  
+      // Dùng proxy để tải ảnh từ resultUrl
+      const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
+      console.log("Proxied URL:", proxiedUrl);
+  
+      const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
+  
       const img = new Image();
       img.onload = () => {
-        console.log("Image loaded, size:", img.width, img.height);
+        console.log("Image loaded successfully:", img.width, img.height);
         drawResultOnCanvas(img);
       };
       img.onerror = () => {
-        console.error("Failed to load image from base64:", watermarkedImageUrl.slice(0, 50));
-        setError("Không thể tải ảnh kết quả");
+        console.error("Failed to load watermarked image:", watermarkedImageUrl);
+        setError("Không thể tải ảnh kết quả sau khi thêm watermark");
       };
       img.src = watermarkedImageUrl;
     } catch (err) {
