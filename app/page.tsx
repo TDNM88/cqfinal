@@ -17,7 +17,7 @@ type Path = {
   width: number;
 };
 
-// Danh sách sản phẩm và câu quote
+// Danh sách sản phẩm và câu quote (giữ nguyên)
 const productGroups = {
   "NHÓM TIÊU CHUẨN (STANDARD)": [
     { name: "C1012 - Glacier White", quote: "Glacier với nền trắng kết hợp với những hạt thạch anh kích thước nhỏ, kết hợp với ánh sáng tạo ra chiều sâu cho bề mặt, độ cứng cao, bền đẹp, phù hợp với các công trình thương mại" },
@@ -32,12 +32,12 @@ const productGroups = {
     { name: "C3105 - Casla Cloudy", quote: "Casla Cloudy với tông xanh nhẹ nhàng, giống như tên gọi Cloudy, là bầu trời xanh với vân mây tinh tế xuất hiện ở mật độ vừa phải, tiếp nối vô tận trong một không gian khoáng đạt." },
     { name: "C3146 - Casla Nova", quote: "Casla Nova với tông nâu vàng của những áng mây nhẹ nhàng được thiết kế tự do chấm phá trên nền đá cẩm thạch trắng, tạo không gian vừa sang trọng lại ấm cúng." },
     { name: "C2240 - Marquin", quote: "Marquin nổi bật với nền đen điểm cùng bond màu trắng, hai màu sắc đối lập của bảng màu ẩn hiện đan xen nhau tạo nên sự trừu tượng trong khối kết cấu cụ thể" },
-    { name: "C2262 - Concrete (Honed)", quote: "Concrete được lấy cảm hứng từ bề mặt giả xi măng, với sự pha trộn hoàn hảo giữa các gam màu xám sáng ấm áp, chuyển động vân tinh tế, là sự lựa chọn thông minh cho không gian hiện đại." },
+    { name: "C5225 - Amber", quote: "Amber khác lạ với các đường vân màu nâu đậm tinh tế, kéo dài theo chiều dài tấm đá. Màu sắc ấm áp và sang trọng mang lại vẻ đẹp tự nhiên, tạo điểm nhấn như một dòng sông đang uốn lượn." },
     { name: "C3311 - Calacatta Sky", quote: "Calacatta Sky với những đường vân mảnh đậm nhạt xen lẫn nhau, nhẹ nhàng lướt trên toàn bộ bề mặt tạo sự thu hút như vào một không gian vô tận. Màu nâu xám của vân hòa cùng nền đá trắng tạo nên sự hài hòa vừa cổ điển vừa hiện đại." },
     { name: "C3346 - Massimo", quote: "Massimo lấy vẻ ngoài của bê tông làm chủ đạo, họa tiết vân đá là sự mô phỏng các trường từ vô hình trên Mặt Trời, tạo nên hiệu ứng thị giác độc đáo, thô mộc nhưng mạnh mẽ và đầy táo bạo." },
     { name: "C4143 - Mario", quote: "Mario mang tông màu ấm nâu vàng, được lấy cảm hứng từ mùa thu vàng của Levitan, tạo nét thơ mộng cho không gian bằng việc gợi liên tưởng đến cảnh sắc của hàng cây mùa đổ lá bên cạnh dòng sông đang uốn lượn." },
     { name: "C4145 - Marina", quote: "Marina mang tông màu xám lạnh, được lấy cảm hứng từ những dòng sông miền cực bắc quanh năm phủ tuyết trắng, nơi màu xanh của nước tinh khiết hòa quyện với màu trắng của tuyết tạo nên một cảnh tượng kỳ vĩ tráng lệ." },
-    { name: "C5225 - Amber", quote: "Amber khác lạ với các đường vân màu nâu đậm tinh tế, kéo dài theo chiều dài tấm đá. Màu sắc ấm áp và sang trọng mang lại vẻ đẹp tự nhiên, tạo điểm nhấn như một dòng sông đang uốn lượn." },
+    { name: "C2262 - Concrete (Honed)", quote: "Concrete được lấy cảm hứng từ bề mặt giả xi măng, với sự pha trộn hoàn hảo giữa các gam màu xám sáng ấm áp, chuyển động vân tinh tế, là sự lựa chọn thông minh cho không gian hiện đại." },
     { name: "C5240 - Spring", quote: "Spring lấy cảm hứng từ các yếu tố tương phản sáng tối, cùng với đường vân sắc nét uyển chuyển nhấp nhô khắp bề mặt, mang lại sự cân bằng hoàn hảo, làm nổi bật vẻ hiện đại và sang trọng." },
   ],
   "NHÓM CAO CẤP (LUXURY)": [
@@ -232,7 +232,7 @@ export default function ImageInpaintingApp() {
     ctx.textAlign = "center";
   };
 
-  // Sửa logic vẽ theo yêu cầu
+  // Logic vẽ và xóa
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     if (!inputCanvasRef.current) return;
@@ -247,17 +247,13 @@ export default function ImageInpaintingApp() {
     const y = e.clientY - rect.top;
 
     if (!isRightClick) {
-      // Chuột trái: Bắt đầu vẽ nét trắng
+      // Chuột trái: Vẽ nét trắng
       setPaths((prev) => [
         ...prev,
-        {
-          points: [{ x, y }],
-          color: "white",
-          width: brushSize,
-        },
+        { points: [{ x, y }], color: "white", width: brushSize },
       ]);
     } else {
-      // Chuột phải: Xóa mask tại vị trí
+      // Chuột phải: Xóa tại vị trí
       eraseAtPosition(x, y);
     }
   };
@@ -278,10 +274,9 @@ export default function ImageInpaintingApp() {
         return newPaths;
       });
     } else {
-      // Chuột phải: Tiếp tục xóa mask
+      // Chuột phải: Tiếp tục xóa
       eraseAtPosition(x, y);
     }
-
     redrawCanvas();
   };
 
@@ -291,7 +286,7 @@ export default function ImageInpaintingApp() {
     redrawCanvas();
   };
 
-  // Thêm hàm eraseAtPosition để xóa mask
+  // Hàm xóa mask tại vị trí
   const eraseAtPosition = (x: number, y: number) => {
     const eraseRadius = brushSize / 2;
 
@@ -307,6 +302,41 @@ export default function ImageInpaintingApp() {
     });
   };
 
+  const startDrawingTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!inputCanvasRef.current) return;
+    setIsDrawing(true);
+    setActiveCanvas("canvas1");
+    const rect = inputCanvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    setPaths((prev) => [
+      ...prev,
+      { points: [{ x, y }], color: "white", width: brushSize },
+    ]);
+  };
+
+  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !inputCanvasRef.current) return;
+    const rect = inputCanvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    setPaths((prev) => {
+      const newPaths = [...prev];
+      const currentPath = newPaths[newPaths.length - 1];
+      currentPath.points.push({ x, y });
+      return newPaths;
+    });
+    redrawCanvas();
+  };
+
+  const stopDrawingTouch = () => {
+    setIsDrawing(false);
+    redrawCanvas();
+  };
+
   const redrawCanvas = () => {
     const inputCanvas = inputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
@@ -317,16 +347,12 @@ export default function ImageInpaintingApp() {
     if (!inputCtx || !maskCtx) return;
 
     maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-
     paths.forEach((path) => {
-      if (path.points.length === 0) return;
-
       maskCtx.beginPath();
-      maskCtx.strokeStyle = path.color; // Chỉ trắng cho mask
+      maskCtx.strokeStyle = path.color; // Chỉ dùng màu trắng cho mask
       maskCtx.lineWidth = path.width;
       maskCtx.lineCap = "round";
       maskCtx.lineJoin = "round";
-
       path.points.forEach((point, index) => {
         if (index === 0) maskCtx.moveTo(point.x, point.y);
         else maskCtx.lineTo(point.x, point.y);
@@ -357,47 +383,6 @@ export default function ImageInpaintingApp() {
     resizedImg.src = resizedImageData;
   };
 
-  const startDrawingTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!inputCanvasRef.current) return;
-
-    setIsDrawing(true);
-    setIsErasing(false);
-    setActiveCanvas("canvas1");
-
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: "white", width: brushSize },
-    ]);
-  };
-
-  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !inputCanvasRef.current) return;
-
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-
-    setPaths((prev) => {
-      const newPaths = [...prev];
-      const currentPath = newPaths[newPaths.length - 1];
-      currentPath.points.push({ x, y });
-      return newPaths;
-    });
-    redrawCanvas();
-  };
-
-  const stopDrawingTouch = () => {
-    setIsDrawing(false);
-    redrawCanvas();
-  };
-
   const deletePathAtPosition = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
@@ -424,25 +409,18 @@ export default function ImageInpaintingApp() {
     }
   };
 
-  // Sửa nút "Tải ảnh mới" theo yêu cầu
-  const handleNewImage = () => {
-    setImage(null); // Xóa ảnh ở Canvas 1
-    setPaths([]); // Xóa mask ở Canvas 1
-    setResizedImageData(""); // Xóa dữ liệu ảnh resized
-    setError(null);
-    setActiveCanvas("canvas1");
-    fileInputRef.current?.click(); // Mở file input
-    // Không động đến inpaintedImage để giữ Canvas 3
+  const handleGroupSelect = (group: string) => {
+    setSelectedGroup(group);
+    setSelectedProduct(null);
   };
 
-  // Sửa nút "Refresh" theo yêu cầu
-  const handleRefresh = () => {
-    setPaths([]); // Chỉ xóa mask
-    setError(null);
-    setActiveCanvas("canvas1");
-    if (image && resizedImageData) {
-      drawImageOnCanvas(image, resizedImageData); // Vẽ lại ảnh gốc
+  const handleProductSelect = (productName: string) => {
+    if (!products[productName as keyof typeof products]) {
+      setError("Sản phẩm không hợp lệ");
+      return;
     }
+    setSelectedProduct(productName);
+    setError(null);
   };
 
   const saveCanvasState = () => {
@@ -459,18 +437,25 @@ export default function ImageInpaintingApp() {
     link.remove();
   };
 
-  const handleGroupSelect = (group: string) => {
-    setSelectedGroup(group);
-    setSelectedProduct(null);
+  // Nút "Tải ảnh mới"
+  const handleNewImage = () => {
+    setImage(null);
+    setPaths([]);
+    setResizedImageData("");
+    setError(null);
+    setActiveCanvas("canvas1");
+    fileInputRef.current?.click();
+    // Không xóa inpaintedImage để giữ Canvas 3
   };
 
-  const handleProductSelect = (productName: string) => {
-    if (!products[productName as keyof typeof products]) {
-      setError("Sản phẩm không hợp lệ");
-      return;
-    }
-    setSelectedProduct(productName);
+  // Nút "Refresh" (chỉ xóa mask)
+  const handleRefresh = () => {
+    setPaths([]);
     setError(null);
+    setActiveCanvas("canvas1");
+    if (image && resizedImageData) {
+      drawImageOnCanvas(image, resizedImageData); // Vẽ lại ảnh gốc
+    }
   };
 
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -525,45 +510,36 @@ export default function ImageInpaintingApp() {
 
       return canvas.toDataURL("image/png");
     } catch (error) {
+      console.error("Error in addWatermark:", error);
       throw error;
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
-  
+
     try {
       setIsProcessing(true);
       setError(null);
       setActiveCanvas("canvas2");
-  
+
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
       const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
-      console.log("Result URL from TensorArt:", resultUrl);
-  
-      // Dùng proxy để tải ảnh từ resultUrl
+
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
-      console.log("Proxied URL:", proxiedUrl);
-  
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
-  
+
       const img = new Image();
-      img.onload = () => {
-        console.log("Image loaded successfully:", img.width, img.height);
-        drawResultOnCanvas(img);
-      };
-      img.onerror = () => {
-        console.error("Failed to load watermarked image:", watermarkedImageUrl);
-        setError("Không thể tải ảnh kết quả sau khi thêm watermark");
-      };
+      img.onload = () => drawResultOnCanvas(img);
+      img.onerror = () => setError("Không thể tải ảnh kết quả sau khi thêm watermark");
       img.src = watermarkedImageUrl;
     } catch (err) {
       console.error("Error in handleSubmit:", err);
@@ -576,19 +552,16 @@ export default function ImageInpaintingApp() {
   const drawResultOnCanvas = (img: HTMLImageElement) => {
     const outputCanvas = outputCanvasRef.current;
     if (!outputCanvas) {
-      console.error("outputCanvasRef is null");
       setError("Canvas không khả dụng");
       return;
     }
     const ctx = outputCanvas.getContext("2d");
     if (!ctx) {
-      console.error("Canvas context is null");
       setError("Không thể lấy context của canvas");
       return;
     }
 
     if (img.width === 0 || img.height === 0) {
-      console.error("Image has invalid dimensions:", img.width, img.height);
       setError("Kích thước ảnh không hợp lệ");
       return;
     }
@@ -603,7 +576,6 @@ export default function ImageInpaintingApp() {
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-    console.log("Image drawn on canvas with size:", canvasWidth, canvasHeight);
   };
 
   const getCombinedImage = async (): Promise<string> => {
@@ -709,14 +681,14 @@ export default function ImageInpaintingApp() {
               <div className="flex flex-col gap-4">
                 <div className="flex gap-4 justify-between">
                   <Button
-                    onClick={handleNewImage}
+                    onClick={handleNewImage} // Sửa thành handleNewImage
                     className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Tải ảnh mới
                   </Button>
                   <Button
-                    onClick={handleRefresh}
+                    onClick={handleRefresh} // Sửa thành handleRefresh
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -763,7 +735,7 @@ export default function ImageInpaintingApp() {
                   <TabsContent value="info" className="space-y-2 mt-2">
                     <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
                       <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để xóa mask).</p>
+                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để xóa).</p>
                       <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
                     </div>
                   </TabsContent>
@@ -786,7 +758,7 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
 
-        {/* Cột 2: Chọn sản phẩm và Quote (giữ nguyên từ mã gốc) */}
+        {/* Cột 2: Chọn sản phẩm và Quote (giữ nguyên) */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
@@ -830,7 +802,7 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
 
-        {/* Cột 3: Kết quả xử lý (giữ nguyên từ mã gốc) */}
+        {/* Cột 3: Kết quả xử lý (giữ nguyên) */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
