@@ -821,7 +821,7 @@ export default function ImageInpaintingApp() {
       </footer>
     </div>
   );
-}
+},
       <footer className="mt-12 py-4 text-center text-sm text-blue-900/70">
         <p>Liên hệ: support@caslaquartz.com | Hotline: 1234-567-890</p>
         <p>CaslaQuartz @2025 - All rights reserved.</p>
