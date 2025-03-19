@@ -53,13 +53,6 @@ const products = Object.fromEntries(
   ])
 );
 
-const products = Object.fromEntries(
-  Object.values(productGroups).flat().map((item) => [
-    item.name,
-    `/product_images/${item.name.split(" - ")[0]}.jpg`,
-  ])
-);
-
 export const dynamic = "force-dynamic";
 
 export default function ImageInpaintingApp() {
