@@ -234,118 +234,144 @@ export default function ImageInpaintingApp() {
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!inputCanvasRef.current) return;
-    setIsDrawing(true);
-    setIsErasing(e.button === 2);
-    setActiveCanvas("canvas1");
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: isErasing ? "black" : "white", width: brushSize },
-    ]);
-  };
+  e.preventDefault();
+  if (!inputCanvasRef.current) return;
+  setIsDrawing(true);
+  setIsErasing(e.button === 2);
+  setActiveCanvas("canvas1");
+  const rect = inputCanvasRef.current.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  setPaths((prev) => [
+    ...prev,
+    { points: [{ x, y }], color: isErasing ? "black" : "white", width: brushSize },
+  ]);
+  redrawCanvas(); // Gọi ngay để vẽ điểm đầu tiên
+};
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !inputCanvasRef.current) return;
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setPaths((prev) => {
-      const newPaths = [...prev];
-      const currentPath = newPaths[newPaths.length - 1];
+const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  if (!isDrawing || !inputCanvasRef.current) return;
+  const rect = inputCanvasRef.current.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  setPaths((prev) => {
+    const newPaths = [...prev];
+    const currentPath = newPaths[newPaths.length - 1];
+    // Chỉ thêm điểm nếu khoảng cách đủ lớn để tránh quá nhiều điểm gần nhau
+    const lastPoint = currentPath.points[currentPath.points.length - 1];
+    const distance = Math.sqrt((x - lastPoint.x) ** 2 + (y - lastPoint.y) ** 2);
+    if (distance > 2) { // Giảm khoảng cách tối thiểu để nét vẽ chi tiết hơn
       currentPath.points.push({ x, y });
-      return newPaths;
-    });
-    redrawCanvas();
-  };
+    }
+    return newPaths;
+  });
 
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    setIsErasing(false);
-    redrawCanvas();
-  };
+  redrawCanvas(); // Cập nhật canvas ngay khi vẽ
+};
 
-  const startDrawingTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!inputCanvasRef.current) return;
-    setIsDrawing(true);
-    setActiveCanvas("canvas1");
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: "white", width: brushSize },
-    ]);
-  };
+const stopDrawing = () => {
+  setIsDrawing(false);
+  setIsErasing(false);
+  redrawCanvas(); // Đảm bảo vẽ lại lần cuối khi dừng
+};
 
-  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !inputCanvasRef.current) return;
-    const rect = inputCanvasRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    setPaths((prev) => {
-      const newPaths = [...prev];
-      const currentPath = newPaths[newPaths.length - 1];
-      currentPath.points.push({ x, y });
-      return newPaths;
-    });
-    redrawCanvas();
-  };
+const redrawCanvas = () => {
+  const inputCanvas = inputCanvasRef.current;
+  const maskCanvas = maskCanvasRef.current;
+  if (!inputCanvas || !maskCanvas || !image) return;
 
-  const stopDrawingTouch = () => {
-    setIsDrawing(false);
-    redrawCanvas();
-  };
+  const inputCtx = inputCanvas.getContext("2d");
+  const maskCtx = maskCanvas.getContext("2d");
+  if (!inputCtx || !maskCtx) return;
 
-  const redrawCanvas = () => {
-    const inputCanvas = inputCanvasRef.current;
-    const maskCanvas = maskCanvasRef.current;
-    if (!inputCanvas || !maskCanvas || !image) return;
+  // Xóa canvas trước khi vẽ lại
+  maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
 
-    const inputCtx = inputCanvas.getContext("2d");
-    const maskCtx = maskCanvas.getContext("2d");
-    if (!inputCtx || !maskCtx) return;
+  // Cấu hình để nét vẽ mượt mà
+  maskCtx.lineCap = "round"; // Đầu nét tròn
+  maskCtx.lineJoin = "round"; // Nối các đoạn trơn tru
 
-    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-    paths.forEach((path) => {
-      maskCtx.beginPath();
-      maskCtx.strokeStyle = path.color;
-      maskCtx.lineWidth = path.width;
-      path.points.forEach((point, index) => {
-        if (index === 0) maskCtx.moveTo(point.x, point.y);
-        else maskCtx.lineTo(point.x, point.y);
-      });
+  paths.forEach((path) => {
+    if (path.points.length === 0) return;
+
+    maskCtx.beginPath();
+    maskCtx.strokeStyle = path.color;
+    maskCtx.lineWidth = path.width;
+
+    if (path.points.length === 1) {
+      // Nếu chỉ có 1 điểm, vẽ một chấm tròn
+      const point = path.points[0];
+      maskCtx.arc(point.x, point.y, path.width / 2, 0, Math.PI * 2);
+      maskCtx.fillStyle = path.color;
+      maskCtx.fill();
+    } else {
+      // Vẽ đường cong Bezier cho nhiều điểm
+      maskCtx.moveTo(path.points[0].x, path.points[0].y);
+      for (let i = 1; i < path.points.length - 1; i++) {
+        const xc = (path.points[i].x + path.points[i + 1].x) / 2;
+        const yc = (path.points[i].y + path.points[i + 1].y) / 2;
+        maskCtx.quadraticCurveTo(path.points[i].x, path.points[i].y, xc, yc);
+      }
+      // Nối điểm cuối cùng nếu có ít nhất 2 điểm
+      if (path.points.length > 1) {
+        const lastPoint = path.points[path.points.length - 1];
+        maskCtx.quadraticCurveTo(
+          path.points[path.points.length - 2].x,
+          path.points[path.points.length - 2].y,
+          lastPoint.x,
+          lastPoint.y
+        );
+      }
       maskCtx.stroke();
-    });
+    }
+  });
 
-    updateMaskPreview();
-  };
+  updateMaskPreview();
+};
 
-  const updateMaskPreview = () => {
-    const inputCanvas = inputCanvasRef.current;
-    const maskCanvas = maskCanvasRef.current;
-    if (!inputCanvas || !maskCanvas || !image) return;
+// Các hàm touch tương tự
+const startDrawingTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+  e.preventDefault();
+  if (!inputCanvasRef.current) return;
+  setIsDrawing(true);
+  setActiveCanvas("canvas1");
+  const rect = inputCanvasRef.current.getBoundingClientRect();
+  const touch = e.touches[0];
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+  setPaths((prev) => [
+    ...prev,
+    { points: [{ x, y }], color: "white", width: brushSize },
+  ]);
+  redrawCanvas();
+};
 
-    const inputCtx = inputCanvas.getContext("2d");
-    if (!inputCtx) return;
+const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+  if (!isDrawing || !inputCanvasRef.current) return;
+  const rect = inputCanvasRef.current.getBoundingClientRect();
+  const touch = e.touches[0];
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
 
-    const resizedImg = new Image();
-    resizedImg.onload = () => {
-      inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
-      inputCtx.drawImage(resizedImg, 0, 0, inputCanvas.width, inputCanvas.height);
-      inputCtx.globalAlpha = maskOpacity;
-      inputCtx.drawImage(maskCanvas, 0, 0, inputCanvas.width, inputCanvas.height);
-      inputCtx.globalAlpha = 1.0;
-    };
-    resizedImg.onerror = () => setError("Không thể cập nhật preview mask");
-    resizedImg.src = resizedImageData;
-  };
+  setPaths((prev) => {
+    const newPaths = [...prev];
+    const currentPath = newPaths[newPaths.length - 1];
+    const lastPoint = currentPath.points[currentPath.points.length - 1];
+    const distance = Math.sqrt((x - lastPoint.x) ** 2 + (y - lastPoint.y) ** 2);
+    if (distance > 2) {
+      currentPath.points.push({ x, y });
+    }
+    return newPaths;
+  });
+
+  redrawCanvas();
+};
+
+const stopDrawingTouch = () => {
+  setIsDrawing(false);
+  redrawCanvas();
+};
 
   const deletePathAtPosition = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const maskCanvas = maskCanvasRef.current;
