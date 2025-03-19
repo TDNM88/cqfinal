@@ -103,6 +103,7 @@ export default function ImageInpaintingApp() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [paths, setPaths] = useState<Path[]>([]);
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
+  const [isBrushSizeOpen, setIsBrushSizeOpen] = useState(false); 
 
   // Refs
   const inputCanvasRef = useRef<HTMLCanvasElement>(null);
