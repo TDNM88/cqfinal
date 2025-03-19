@@ -94,7 +94,6 @@ export default function ImageInpaintingApp() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [paths, setPaths] = useState<Path[]>([]);
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
@@ -374,11 +373,6 @@ export default function ImageInpaintingApp() {
     }
   };
 
-  const handleGroupSelect = (group: string) => {
-    setSelectedGroup(group);
-    setSelectedProduct(null);
-  };
-
   const handleProductSelect = (productName: string) => {
     if (!products[productName as keyof typeof products]) {
       setError("Sản phẩm không hợp lệ");
@@ -439,33 +433,33 @@ export default function ImageInpaintingApp() {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = imageData;
-  
+
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve();
         img.onerror = () => reject(new Error(`Không thể tải ảnh từ ${imageData}`));
       });
-  
+
       console.log("Đã tải ảnh để đóng dấu:", img.width, img.height);
-  
+
       const logo = new Image();
       logo.src = "/logo.png";
       await new Promise<void>((resolve, reject) => {
         logo.onload = () => resolve();
         logo.onerror = () => reject(new Error("Không thể tải logo watermark từ /logo.png"));
       });
-  
+
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Không thể tạo context cho canvas");
-  
+
       ctx.drawImage(img, 0, 0);
       const logoSize = img.width * 0.2;
       const logoX = img.width - logoSize - 10;
       const logoY = img.height - logoSize - 10;
       ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-  
+
       const result = canvas.toDataURL("image/png");
       canvas.remove();
       return result;
@@ -477,30 +471,29 @@ export default function ImageInpaintingApp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
-  
+
     try {
       setIsProcessing(true);
       setError(null);
       setActiveCanvas("canvas2");
-  
+
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
       const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
       console.log("Result URL from TensorArt:", resultUrl);
-  
-      // Dùng proxy để tải ảnh từ resultUrl
+
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       console.log("Proxied URL:", proxiedUrl);
-  
+
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
-  
+
       const img = new Image();
       img.onload = () => {
         console.log("Image loaded successfully:", img.width, img.height);
@@ -602,11 +595,6 @@ export default function ImageInpaintingApp() {
     const allProducts = Object.values(productGroups).flat();
     const product = allProducts.find((p) => p.name === selectedProduct);
     return product ? product.quote : "Không tìm thấy thông tin sản phẩm.";
-  };
-
-  const Column2 = () => {
-  const handleProductSelect = (productName: string) => {
-    setSelectedProduct(productName);
   };
 
   return (
@@ -741,17 +729,15 @@ export default function ImageInpaintingApp() {
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
-    
+
             {/* Vùng cuộn chứa tất cả nhóm và sản phẩm */}
             <ScrollArea className="h-[400px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
               <div className="flex flex-col gap-6">
                 {Object.entries(productGroups).map(([groupName, products]) => (
                   <div key={groupName} className="flex flex-col gap-2">
-                    {/* Tiêu đề nhóm */}
                     <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-wide border-b border-gray-300 pb-1">
                       {groupName}
                     </h3>
-                    {/* Danh sách sản phẩm */}
                     <div className="flex flex-col gap-2">
                       {products.map((product) => (
                         <Button
@@ -762,7 +748,7 @@ export default function ImageInpaintingApp() {
                               ? "bg-blue-900 text-white hover:bg-blue-800"
                               : "bg-white text-blue-900 hover:bg-gray-100"
                           }`}
-                          title={product.name} // Tooltip cho tên đầy đủ
+                          title={product.name}
                           style={{
                             whiteSpace: "nowrap",
                             overflow: "hidden",
@@ -777,7 +763,7 @@ export default function ImageInpaintingApp() {
                 ))}
               </div>
             </ScrollArea>
-    
+
             {/* Thông tin sản phẩm */}
             <div className="mt-auto">
               <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}`}>
