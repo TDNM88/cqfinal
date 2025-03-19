@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw, Save } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Nếu dùng thư viện UI
 import { useInpainting } from "@/hooks/useInpainting";
 
 // Định nghĩa kiểu Path cho các đường vẽ
@@ -603,6 +604,11 @@ export default function ImageInpaintingApp() {
     return product ? product.quote : "Không tìm thấy thông tin sản phẩm.";
   };
 
+  const Column2 = () => {
+  const handleProductSelect = (productName: string) => {
+    setSelectedProduct(productName);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
       <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
@@ -733,41 +739,58 @@ export default function ImageInpaintingApp() {
 
         {/* Cột 2: Chọn sản phẩm */}
         <div className="flex flex-col space-y-4">
-          <Card className="p-6 bg-white rounded-xl shadow-lg h-full transition-transform hover:scale-[1.02]">
-            <h2 className="text-xl font-semibold text-blue-900 mb-4">Chọn Sản Phẩm</h2>
-            <div className="space-y-2">
-              {Object.keys(productGroups).map((group) => (
-                <div key={group}>
-                  <Button
-                    onClick={() => setOpenGroup(openGroup === group ? null : group)}
-                    className="w-full text-left bg-blue-100 hover:bg-blue-200 text-blue-900"
-                  >
-                    {group}
-                  </Button>
-                  {openGroup === group && (
-                    <div className="mt-2 space-y-1">
-                      {productGroups[group as keyof typeof productGroups].map((product) => (
+          <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
+            <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
+    
+            {/* Vùng cuộn chứa tất cả nhóm và sản phẩm */}
+            <ScrollArea className="h-[400px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
+              <div className="flex flex-col gap-6">
+                {Object.entries(productGroups).map(([groupName, products]) => (
+                  <div key={groupName} className="flex flex-col gap-2">
+                    {/* Tiêu đề nhóm */}
+                    <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-wide border-b border-gray-300 pb-1">
+                      {groupName}
+                    </h3>
+                    {/* Danh sách sản phẩm */}
+                    <div className="flex flex-col gap-2">
+                      {products.map((product) => (
                         <Button
                           key={product.name}
-                          onClick={() => setSelectedProduct(product.name)}
-                          className={`w-full text-left justify-start ${
-                            selectedProduct === product.name ? "bg-blue-600 text-white" : "bg-gray-100 text-blue-900 hover:bg-gray-200"
+                          onClick={() => handleProductSelect(product.name)}
+                          className={`w-full text-left justify-start py-2 px-4 text-sm transition-all ${
+                            selectedProduct === product.name
+                              ? "bg-blue-900 text-white hover:bg-blue-800"
+                              : "bg-white text-blue-900 hover:bg-gray-100"
                           }`}
+                          title={product.name} // Tooltip cho tên đầy đủ
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
                         >
                           {product.name}
                         </Button>
                       ))}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+    
+            {/* Thông tin sản phẩm */}
+            <div className="mt-auto">
+              <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}`}>
+                <AlertTitle className="text-blue-900 font-medium">Ý nghĩa sản phẩm</AlertTitle>
+                <AlertDescription className="text-sm text-gray-700">
+                  {getProductQuote()}
+                </AlertDescription>
+              </Alert>
             </div>
-            <Alert className="mt-4 bg-black text-white rounded-lg">
-              <AlertTitle className="text-sm">Thông tin</AlertTitle>
-              <AlertDescription className="text-xs">{getProductQuote()}</AlertDescription>
-            </Alert>
           </Card>
         </div>
+      );
+    };
 
 
         {/* Cột 3: Kết quả xử lý */}
