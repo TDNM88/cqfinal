@@ -8,8 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw, Save } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area"; // Nếu dùng thư viện UI
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useInpainting } from "@/hooks/useInpainting";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Định nghĩa kiểu Path cho các đường vẽ
 type Path = {
@@ -20,14 +26,14 @@ type Path = {
 
 // Danh sách sản phẩm và câu quote
 const productGroups = {
-  "NHÓM TIÊU CHUẨN (STANDARD)": [
+  "STANDARD": [
     { name: "C1012 - Glacier White", quote: "Glacier với nền trắng kết hợp với những hạt thạch anh kích thước nhỏ, kết hợp với ánh sáng tạo ra chiều sâu cho bề mặt, độ cứng cao, bền đẹp, phù hợp với các công trình thương mại" },
     { name: "C1026 - Polar", quote: "Polar với nền trắng kết hợp với những hạt thạch anh kích thước lớn, kết hợp với ánh sáng tạo ra chiều sâu cho bề mặt, độ cứng cao, bền đẹp, phù hợp với các công trình thương mại" },
     { name: "C1005 - Milky White", quote: "Milky White với màu trắng tinh khiết, nhẹ nhàng, dễ dàng kết hợp với các đồ nội thất khác, phù hợp với phong cách tối giản" },
     { name: "C3168 - Silver Wave", quote: "Silver Wave chủ đạo với nền trắng, hòa cùng đó là những ánh bạc ngẫu hứng như những con sóng xô bờ dưới cái nắng chói chang của miền biển nhiệt đới" },
     { name: "C3269 - Ash Grey", quote: "Ash Grey với màu nền tông xám, kết hợp với bond trầm tựa như làn khói ẩn hiện trong không gian, tạo nên sự trang nhã đầy cuốn hút" },
   ],
-  "NHÓM TRUNG CẤP (DELUXE)": [
+  "DELUXE": [
     { name: "C2103 - Onyx Carrara", quote: "Onyx Carrara lấy cảm hứng từ dòng đá cẩm thạch Carrara nổi tiếng của nước Ý; được thiết kế với những vân ẩn tinh tế, nhẹ nhàng trên nền đá trắng pha chút gam tối tạo không gian ấm cúng, bình yên." },
     { name: "C2104 - Massa", quote: "Massa được lấy cảm hứng từ dòng đá cẩm thạch Carrara nổi tiếng của Italy với những vân ẩn tinh tế và nhẹ nhàng tạo không gian sang trọng trên nền đá cẩm thạch trắng Carrara." },
     { name: "C3105 - Casla Cloudy", quote: "Casla Cloudy với tông xanh nhẹ nhàng, giống như tên gọi Cloudy, là bầu trời xanh với vân mây tinh tế xuất hiện ở mật độ vừa phải, tiếp nối vô tận trong một không gian khoáng đạt." },
@@ -41,7 +47,7 @@ const productGroups = {
     { name: "C5225 - Amber", quote: "Amber khác lạ với các đường vân màu nâu đậm tinh tế, kéo dài theo chiều dài tấm đá. Màu sắc ấm áp và sang trọng mang lại vẻ đẹp tự nhiên, tạo điểm nhấn như một dòng sông đang uốn lượn." },
     { name: "C5240 - Spring", quote: "Spring lấy cảm hứng từ các yếu tố tương phản sáng tối, cùng với đường vân sắc nét uyển chuyển nhấp nhô khắp bề mặt, mang lại sự cân bằng hoàn hảo, làm nổi bật vẻ hiện đại và sang trọng." },
   ],
-  "NHÓM CAO CẤP (LUXURY)": [
+  "LUXURY": [
     { name: "C1102 - Super White", quote: "Super White mang tông màu trắng sáng đặc biệt nhờ được tạo nên từ vật liệu cao cấp, tuy đơn giản nhưng không kém phần sang trọng" },
     { name: "C1205 - Casla Everest", quote: "Casla Everest được lấy cảm hứng từ ngọn núi Everest quanh năm tuyết phủ, độc đáo với đường vân chỉ mấp mô như những đỉnh núi, điểm xuyết thêm vân rối như những đám mây hài hòa trên bề mặt màu trắng cẩm thạch sang trọng." },
     { name: "C4246 - Casla Mystery", quote: "Casla Mystery trừu tượng trong khối kết cụ thể, các đường vân mỏng manh cùng thiết kế không quá cầu kỳ, đem lại cho không gian ấm cúng, bình yên đến lạ." },
@@ -65,7 +71,7 @@ const productGroups = {
     { name: "C5340 - Sonata", quote: "Sonata với những đường vân xám mềm mại xếp thành từng lớp, tạo nên độ tương phản tinh tế và chiều sâu ấn tượng." },
     { name: "C5445 - Muse", quote: "Muse tạo nên sự hòa quyện hài hòa giữa các đường vân mảnh màu vàng và xám nhẹ, phân bố tinh tế trên toàn bộ tấm đá, mang đến không gian ấm áp và an yên." },
   ],
-  "NHÓM SIÊU CAO CẤP (SUPER LUXURY)": [
+  "SUPER LUXURY": [
     { name: "C4147 - Mont", quote: "Mont với những đường vân dày mềm mại xếp thành từng lớp, kết hợp màu vàng và xám tạo nên độ tương phản tinh tế và chiều sâu, mang đến vẻ đẹp vượt thời gian." },
     { name: "C4149 - River", quote: "River nổi bật với các dải màu xám trên nền trắng tạo chiều sâu và cân bằng, mang lại vẻ đẹp tự nhiên và đẳng cấp." },
     { name: "C4255 - Calacatta Extra", quote: "Calacatta Extra nổi bật với những đường vân xám tối đan xen, uyển chuyển như những nhánh cây vươn ra trên nền cẩm thạch trắng tinh khiết, tạo điểm nhấn sang trọng." },
@@ -743,30 +749,28 @@ const updateMaskPreview = () => {
 
             {image && (
               <div className="flex flex-col gap-4">
-                <div className="flex gap-4 justify-between">
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Tải ảnh mới
-                  </Button>
-                  <Button
-                    onClick={handleReloadImage}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    onClick={saveCanvasState}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Lưu ảnh
-                  </Button>
-                </div>
+                {/* Menu thả xuống thay thế các nút */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">...</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Tải ảnh mới
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleReloadImage}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Xóa mask
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={saveCanvasState}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Lưu ảnh
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                <Tabs defaultValue="brush" className="w-full">
+                 <Tabs defaultValue="brush" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 bg-blue-50 rounded-md">
                     <TabsTrigger
                       value="brush"
@@ -784,17 +788,29 @@ const updateMaskPreview = () => {
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="brush" className="space-y-2 mt-2">
-                    <div>
-                      <label className="text-sm font-medium text-blue-900">Kích thước: {brushSize}px</label>
-                      <Slider
-                        value={[brushSize]}
-                        min={1}
-                        max={50}
-                        step={1}
-                        onValueChange={(value) => setBrushSize(value[0])}
-                        className="mt-1"
-                      />
-                    </div>
+                    {/* Nút mở popup thay thế slider */}
+                    <Button onClick={() => setIsBrushSizeOpen(true)}>Kích thước</Button>
+                    {isBrushSizeOpen && (
+                      <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
+                        <label className="text-sm font-medium text-blue-900">
+                          Kích thước: {brushSize}px
+                        </label>
+                        <Slider
+                          value={[brushSize]}
+                          min={1}
+                          max={50}
+                          step={1}
+                          onValueChange={(value) => setBrushSize(value[0])}
+                          className="mt-1"
+                        />
+                        <Button
+                          onClick={() => setIsBrushSizeOpen(false)}
+                          className="mt-2"
+                        >
+                          Đóng
+                        </Button>
+                      </div>
+                    )}
                   </TabsContent>
                   <TabsContent value="info" className="space-y-2 mt-2">
                     <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
@@ -822,12 +838,10 @@ const updateMaskPreview = () => {
           </Card>
         </div>
 
-        {/* Cột 2: Chọn sản phẩm */}
+        {/* Cột 2: Chọn sản phẩm (giữ nguyên) */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
-
-            {/* Vùng cuộn chứa tất cả nhóm và sản phẩm */}
             <ScrollArea className="h-[400px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
               <div className="flex flex-col gap-6">
                 {Object.entries(productGroups).map(([groupName, products]) => (
@@ -860,8 +874,6 @@ const updateMaskPreview = () => {
                 ))}
               </div>
             </ScrollArea>
-
-            {/* Thông tin sản phẩm */}
             <div className="mt-auto">
               <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}`}>
                 <AlertTitle className="text-blue-900 font-medium">Ý nghĩa sản phẩm</AlertTitle>
@@ -873,7 +885,7 @@ const updateMaskPreview = () => {
           </Card>
         </div>
 
-        {/* Cột 3: Kết quả xử lý */}
+        {/* Cột 3: Kết quả xử lý (giữ nguyên) */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
@@ -886,7 +898,6 @@ const updateMaskPreview = () => {
                 </div>
               )}
             </div>
-
             <Button
               onClick={downloadImage}
               disabled={!inpaintedImage}
@@ -895,7 +906,6 @@ const updateMaskPreview = () => {
               <Download className="h-4 w-4 mr-2" />
               Tải kết quả
             </Button>
-
             {error && (
               <Alert variant="destructive" className="mt-2 p-4">
                 <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
