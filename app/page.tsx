@@ -345,43 +345,49 @@ export default function ImageInpaintingApp() {
   };
 
   const getCombinedImage = async (): Promise<string> => {
-    const maskCanvas = maskCanvasRef.current!;
-    const maskCtx = maskCanvas.getContext("2d")!;
+    const inputCanvas = inputCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!inputCanvas || !maskCanvas || !image) {
+      throw new Error("Không tìm thấy canvas hoặc ảnh");
+    }
+  
+    const maskCtx = maskCanvas.getContext("2d");
+    if (!maskCtx) throw new Error("Không thể lấy context của mask");
+  
     const maskCanvasBW = document.createElement("canvas");
-    maskCanvasBW.width = maskCanvas.width;
-    maskCanvasBW.height = maskCanvas.height;
-    const maskCtxBW = maskCanvasBW.getContext("2d")!;
-    maskCtxBW.fillStyle = "black"; // Nền đen
+    maskCanvasBW.width = inputCanvas.width;
+    maskCanvasBW.height = inputCanvas.height;
+    const maskCtxBW = maskCanvasBW.getContext("2d");
+    if (!maskCtxBW) {
+      maskCanvasBW.remove();
+      throw new Error("Không thể tạo context cho mask BW");
+    }
+  
+    // Đặt nền đen thay vì trắng
+    maskCtxBW.fillStyle = "black";
     maskCtxBW.fillRect(0, 0, maskCanvasBW.width, maskCanvasBW.height);
     maskCtxBW.drawImage(maskCanvas, 0, 0);
     const maskImageData = maskCtxBW.getImageData(0, 0, maskCanvasBW.width, maskCanvasBW.height);
     const maskData = maskImageData.data;
   
+    // Chuyển vùng vẽ (không phải đen) thành trắng
     for (let i = 0; i < maskData.length; i += 4) {
       const r = maskData[i];
       const g = maskData[i + 1];
       const b = maskData[i + 2];
-      if (r !== 0 || g !== 0 || b !== 0) { // Nếu không phải đen (vùng đã vẽ)
-        maskData[i] = 255;     // Đặt đỏ thành trắng
-        maskData[i + 1] = 255; // Đặt xanh lá thành trắng
-        maskData[i + 2] = 255; // Đặt xanh dương thành trắng
+      if (r !== 0 || g !== 0 || b !== 0) { // Nếu không phải đen (vùng vẽ)
+        maskData[i] = 255;     // Trắng
+        maskData[i + 1] = 255; // Trắng
+        maskData[i + 2] = 255; // Trắng
         maskData[i + 3] = 255; // Độ trong suốt
       }
     }
     maskCtxBW.putImageData(maskImageData, 0, 0);
+  
     const result = maskCanvasBW.toDataURL("image/png");
     maskCanvasBW.remove();
     return result;
   };
-  const downloadImage = () => {
-    if (!inpaintedImage) return;
-    const link = document.createElement("a");
-    link.download = "ket-qua-xu-ly.png";
-    link.href = inpaintedImage;
-    link.click();
-    link.remove();
-  };
-
   const getProductQuote = () => {
     if (!selectedProduct) return "Vui lòng chọn sản phẩm.";
     const product = Object.values(productGroups).flat().find((p) => p.name === selectedProduct);
