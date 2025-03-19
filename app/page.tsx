@@ -731,49 +731,44 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
 
-        {/* Cột 2: Chọn sản phẩm và Quote */}
+        {/* Cột 2: Chọn sản phẩm */}
         <div className="flex flex-col space-y-4">
-          <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
-            <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
-            <Select onValueChange={handleGroupSelect}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Chọn nhóm sản phẩm" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.keys(productGroups).map((groupName) => (
-                  <SelectItem key={groupName} value={groupName}>
-                    {groupName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {selectedGroup && (
-              <div className="flex flex-wrap gap-2">
-                {productGroups[selectedGroup as keyof typeof productGroups].map((product) => (
+          <Card className="p-6 bg-white rounded-xl shadow-lg h-full transition-transform hover:scale-[1.02]">
+            <h2 className="text-xl font-semibold text-blue-900 mb-4">Chọn Sản Phẩm</h2>
+            <div className="space-y-2">
+              {Object.keys(productGroups).map((group) => (
+                <div key={group}>
                   <Button
-                    key={product.name}
-                    onClick={() => handleProductSelect(product.name)}
-                    className={`flex-1 min-w-[120px] ${
-                      selectedProduct === product.name
-                        ? "bg-blue-900 text-white hover:bg-blue-800"
-                        : "bg-gray-200 text-blue-900 hover:bg-gray-300"
-                    }`}
+                    onClick={() => setOpenGroup(openGroup === group ? null : group)}
+                    className="w-full text-left bg-blue-100 hover:bg-blue-200 text-blue-900"
                   >
-                    {product.name}
+                    {group}
                   </Button>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-auto">
-              <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : ""}`}>
-                <AlertTitle>Ý nghĩa sản phẩm</AlertTitle>
-                <AlertDescription>{getProductQuote()}</AlertDescription>
-              </Alert>
+                  {openGroup === group && (
+                    <div className="mt-2 space-y-1">
+                      {productGroups[group as keyof typeof productGroups].map((product) => (
+                        <Button
+                          key={product.name}
+                          onClick={() => setSelectedProduct(product.name)}
+                          className={`w-full text-left justify-start ${
+                            selectedProduct === product.name ? "bg-blue-600 text-white" : "bg-gray-100 text-blue-900 hover:bg-gray-200"
+                          }`}
+                        >
+                          {product.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+            <Alert className="mt-4 bg-black text-white rounded-lg">
+              <AlertTitle className="text-sm">Thông tin</AlertTitle>
+              <AlertDescription className="text-xs">{getProductQuote()}</AlertDescription>
+            </Alert>
           </Card>
         </div>
+
 
         {/* Cột 3: Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
