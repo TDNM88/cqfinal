@@ -495,42 +495,53 @@ export default function ImageInpaintingApp() {
         </div>
 
         {/* Cột 2: Chọn sản phẩm */}
-        <div className="flex flex-col space-y-4">
-          <Card className="p-6 bg-white rounded-xl shadow-lg h-full transition-transform hover:scale-[1.02]">
-            <h2 className="text-xl font-semibold text-blue-900 mb-4">Chọn Sản Phẩm</h2>
-            <div className="space-y-2">
-              {Object.keys(productGroups).map((group) => (
-                <div key={group}>
-                  <Button
-                    onClick={() => setOpenGroup(openGroup === group ? null : group)}
-                    className="w-full text-left bg-blue-100 hover:bg-blue-200 text-blue-900"
-                  >
-                    {group}
-                  </Button>
-                  {openGroup === group && (
-                    <div className="mt-2 space-y-1">
-                      {productGroups[group as keyof typeof productGroups].map((product) => (
-                        <Button
-                          key={product.name}
-                          onClick={() => setSelectedProduct(product.name)}
-                          className={`w-full text-left justify-start ${
-                            selectedProduct === product.name ? "bg-blue-600 text-white" : "bg-gray-100 text-blue-900 hover:bg-gray-200"
-                          }`}
-                        >
-                          {product.name}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <Alert className="mt-4 bg-black text-white rounded-lg">
-              <AlertTitle className="text-sm">Thông tin</AlertTitle>
-              <AlertDescription className="text-xs">{getProductQuote()}</AlertDescription>
-            </Alert>
+        <div
+          className={`flex flex-col space-y-4 transition-all duration-300 ${
+            activeCanvas === "canvas1" || activeCanvas === "canvas2"
+              ? "transform scale-110 z-10"
+              : "transform scale-90 opacity-75"
+          }`}
+        >
+          <Card className="p-4 h-full flex flex-col shadow-md hover:shadow-lg transition-shadow duration-300">
+            <h2 className="text-xl font-light mb-4 text-blue-800">CaslaQuartz Menu</h2>
+            <div className="text-sm text-blue-800/70 mb-2">Chọn một sản phẩm để tải ảnh:</div>
+            <ScrollArea className="flex-grow border rounded-md p-2 border-blue-100">
+              <Accordion type="single" collapsible className="w-full">
+                {Object.entries(productGroups).map(([groupName, productList]) => (
+                  <AccordionItem key={groupName} value={groupName}>
+                    <AccordionTrigger className="text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition-all duration-200 hover:scale-105">
+                      {groupName}
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid grid-cols-2 gap-1 mt-1">
+                        {productList.map((productName) => (
+                          <Button
+                            key={productName}
+                            variant={selectedProduct === productName ? "default" : "outline"}
+                            className={`justify-start text-left h-auto py-2 px-3 text-xs font-normal transition-all duration-200 hover:scale-105 ${
+                              selectedProduct === productName
+                                ? "bg-blue-800 hover:bg-blue-900 text-white"
+                                : "text-blue-800 border-blue-200 hover:bg-blue-50"
+                            }`}
+                            onClick={() => setSelectedProduct(productName)}
+                          >
+                            {productName}
+                          </Button>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </ScrollArea>
+            {selectedProduct && (
+              <div className="mt-4 p-2 bg-blue-50 rounded-md text-xs text-blue-800">
+                <p className="font-medium">Đã chọn: {selectedProduct}</p>
+              </div>
+            )}
           </Card>
         </div>
+            
 
         {/* Cột 3: Kết quả */}
         <div className="flex flex-col space-y-4">
