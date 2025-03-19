@@ -789,9 +789,6 @@ export default function ImageInpaintingApp() {
             </div>
           </Card>
         </div>
-      );
-    };
-
 
         {/* Cột 3: Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
