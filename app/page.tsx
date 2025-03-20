@@ -91,8 +91,8 @@ export const dynamic = "force-dynamic";
 export default function ImageInpaintingApp() {
   // State
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [originalImageData, setOriginalImageData] = useState<string>(""); // Lưu ảnh gốc
-  const [resizedImageData, setResizedImageData] = useState<string>(""); // Lưu ảnh đã resize để hiển thị
+  const [originalImageData, setOriginalImageData] = useState<string>("");
+  const [resizedImageData, setResizedImageData] = useState<string>("");
   const [brushSize, setBrushSize] = useState(20);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
@@ -177,7 +177,6 @@ export default function ImageInpaintingApp() {
       const img = new window.Image();
       img.onload = async () => {
         try {
-          // Lưu ảnh gốc
           const tempCanvas = document.createElement("canvas");
           tempCanvas.width = img.width;
           tempCanvas.height = img.height;
@@ -191,7 +190,6 @@ export default function ImageInpaintingApp() {
           setOriginalImageData(originalData);
           tempCanvas.remove();
 
-          // Resize ảnh để hiển thị
           const maxWidth = inputCanvasRef.current?.parentElement?.clientWidth || 500;
           const resizedData = await resizeImage(img, maxWidth);
           setResizedImageData(resizedData);
@@ -261,7 +259,7 @@ export default function ImageInpaintingApp() {
     e.preventDefault();
     if (!inputCanvasRef.current || !maskCanvasRef.current) return;
     setIsDrawing(true);
-    setIsErasing(e.button === 2);
+    setIsErasing(e.button === 2); // Chuột phải để xóa
     setActiveCanvas("canvas1");
 
     const rect = inputCanvasRef.current.getBoundingClientRect();
@@ -504,15 +502,27 @@ export default function ImageInpaintingApp() {
     link.remove();
   };
 
-  const handleReloadImage = () => {
+  const handleResetCanvas = () => {
     setImage(null);
     setPaths([]);
     setInpaintedImage(null);
     setError(null);
     setOriginalImageData("");
     setResizedImageData("");
-    setActiveCanvas("canvas1");
-    fileInputRef.current?.click();
+    setActiveCanvas(null);
+    const inputCanvas = inputCanvasRef.current;
+    if (inputCanvas) {
+      const ctx = inputCanvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#F3F4F6";
+        ctx.fillRect(0, 0, inputCanvas.width, inputCanvas.height);
+      }
+    }
+  };
+
+  const handleClearMask = () => {
+    setPaths([]);
+    redrawCanvas();
   };
 
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -595,7 +605,6 @@ export default function ImageInpaintingApp() {
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-      // Sử dụng ảnh gốc thay vì ảnh đã resize
       const resultUrl = await processInpainting(originalImageData, productImageBase64, maskImage);
       console.log("Result URL from TensorArt:", resultUrl);
 
@@ -673,7 +682,6 @@ export default function ImageInpaintingApp() {
       throw new Error("Không tìm thấy canvas hoặc ảnh");
     }
 
-    // Tạo mask với kích thước gốc của ảnh
     const originalMaskCanvas = document.createElement("canvas");
     originalMaskCanvas.width = image.width;
     originalMaskCanvas.height = image.height;
@@ -683,11 +691,9 @@ export default function ImageInpaintingApp() {
       throw new Error("Không thể tạo context cho mask gốc");
     }
 
-    // Tính tỷ lệ giữa kích thước canvas hiển thị và kích thước gốc
     const scaleX = image.width / inputCanvas.width;
     const scaleY = image.height / inputCanvas.height;
 
-    // Vẽ lại các đường path lên mask với kích thước gốc
     originalMaskCtx.clearRect(0, 0, image.width, image.height);
     originalMaskCtx.lineCap = "round";
     originalMaskCtx.lineJoin = "round";
@@ -697,7 +703,7 @@ export default function ImageInpaintingApp() {
 
       originalMaskCtx.beginPath();
       originalMaskCtx.strokeStyle = path.color;
-      originalMaskCtx.lineWidth = path.width * scaleX; // Điều chỉnh kích thước bút vẽ theo tỷ lệ
+      originalMaskCtx.lineWidth = path.width * scaleX;
 
       if (path.points.length === 1) {
         const point = path.points[0];
@@ -722,7 +728,6 @@ export default function ImageInpaintingApp() {
       }
     });
 
-    // Tạo mask đen trắng với kích thước gốc
     const maskCanvasBW = document.createElement("canvas");
     maskCanvasBW.width = image.width;
     maskCanvasBW.height = image.height;
@@ -825,7 +830,6 @@ export default function ImageInpaintingApp() {
                 )}
               </div>
 
-              {/* Nút xử lý phần vẽ mask (dạng icon) */}
               {image && (
                 <div className="flex justify-center gap-2 mt-4">
                   <Button
@@ -835,7 +839,7 @@ export default function ImageInpaintingApp() {
                     <Upload className="h-5 w-5" />
                   </Button>
                   <Button
-                    onClick={handleReloadImage}
+                    onClick={handleClearMask}
                     className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
                     <RefreshCw className="h-5 w-5" />
@@ -917,6 +921,26 @@ export default function ImageInpaintingApp() {
                     </div>
                   )}
                 </div>
+                {image && (
+                  <Tabs defaultValue="info" className="w-full">
+                    <TabsList className="grid w-full grid-cols-1 bg-blue-50 rounded-md">
+                      <TabsTrigger
+                        value="info"
+                        className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
+                      >
+                        <Info className="h-4 w-4 mr-1" />
+                        Hướng dẫn
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="info" className="space-y-2 mt-2">
+                      <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
+                        <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
+                        <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy, nhấp để xóa).</p>
+                        <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
               </div>
 
               {/* Output Canvas */}
@@ -930,6 +954,14 @@ export default function ImageInpaintingApp() {
                       <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
                     </div>
                   )}
+                </div>
+                <div className="mt-2">
+                  <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}`}>
+                    <AlertTitle className="text-blue-900 font-medium">Ý nghĩa sản phẩm</AlertTitle>
+                    <AlertDescription className="text-sm text-gray-700">
+                      {getProductQuote()}
+                    </AlertDescription>
+                  </Alert>
                 </div>
                 <Button
                   onClick={downloadImage}
@@ -952,11 +984,11 @@ export default function ImageInpaintingApp() {
                         <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">...</Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                        <DropdownMenuItem onClick={handleResetCanvas}>
                           <Upload className="h-4 w-4 mr-2" />
                           Tải ảnh mới
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleReloadImage}>
+                        <DropdownMenuItem onClick={handleClearMask}>
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Xóa mask
                         </DropdownMenuItem>
@@ -966,72 +998,47 @@ export default function ImageInpaintingApp() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
-
-                  <Tabs defaultValue="brush" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-blue-50 rounded-md">
-                      <TabsTrigger
-                        value="brush"
-                        className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
-                      >
-                        <Paintbrush className="h-4 w-4 mr-1" />
-                        Bút vẽ
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="info"
-                        className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
-                      >
-                        <Info className="h-4 w-4 mr-1" />
-                        Hướng dẫn
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="brush" className="space-y-2 mt-2">
-                      <Button onClick={() => setIsBrushSizeOpen(true)}>Kích thước</Button>
-                      {isBrushSizeOpen && (
-                        <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
-                          <label className="text-sm font-medium text-blue-900">
-                            Kích thước: {brushSize}px
-                          </label>
-                          <Slider
-                            value={[brushSize]}
-                            min={1}
-                            max={50}
-                            step={1}
-                            onValueChange={(value) => setBrushSize(value[0])}
-                            className="mt-1"
-                          />
-                          <Button
-                            onClick={() => setIsBrushSizeOpen(false)}
-                            className="mt-2"
-                          >
-                            Đóng
-                          </Button>
-                        </div>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="info" className="space-y-2 mt-2">
-                      <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
-                        <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                        <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy, nhấp để xóa).</p>
-                        <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-
-                  <div className="flex gap-4">
                     <Button
-                      onClick={handleSubmit}
-                      disabled={!image || isProcessing || !selectedProduct}
-                      className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
+                      onClick={() => setIsBrushSizeOpen(true)}
+                      className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                     >
-                      {isProcessing ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Send className="h-4 w-4 mr-2" />
-                      )}
-                      Xử lý ảnh
+                      <Paintbrush className="h-4 w-4 mr-2" />
+                      Kích thước
                     </Button>
+                    {isBrushSizeOpen && (
+                      <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
+                        <label className="text-sm font-medium text-blue-900">
+                          Kích thước: {brushSize}px
+                        </label>
+                        <Slider
+                          value={[brushSize]}
+                          min={1}
+                          max={50}
+                          step={1}
+                          onValueChange={(value) => setBrushSize(value[0])}
+                          className="mt-1"
+                        />
+                        <Button
+                          onClick={() => setIsBrushSizeOpen(false)}
+                          className="mt-2"
+                        >
+                          Đóng
+                        </Button>
+                      </div>
+                    )}
                   </div>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!image || isProcessing || !selectedProduct}
+                    className="bg-blue-900 hover:bg-blue-800 text-white"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Xử lý ảnh
+                  </Button>
                 </div>
               )}
             </div>
@@ -1151,14 +1158,6 @@ export default function ImageInpaintingApp() {
                 ))}
               </div>
             </ScrollArea>
-            <div className="mt-auto">
-              <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}`}>
-                <AlertTitle className="text-blue-900 font-medium">Ý nghĩa sản phẩm</AlertTitle>
-                <AlertDescription className="text-sm text-gray-700">
-                  {getProductQuote()}
-                </AlertDescription>
-              </Alert>
-            </div>
           </Card>
         </div>
       </div>
