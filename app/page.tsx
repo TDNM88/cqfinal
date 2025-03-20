@@ -697,43 +697,72 @@ export default function ImageInpaintingApp() {
         {/* Cột 1: Tải ảnh & Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
-            <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-              <canvas
-                ref={inputCanvasRef}
-                className="max-w-full cursor-crosshair"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onContextMenu={(e) => e.preventDefault()}
-                onTouchStart={startDrawingTouch}
-                onTouchMove={drawTouch}
-                onTouchEnd={stopDrawingTouch}
-                onClick={deletePathAtPosition}
-              />
-              {!image && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
-                  <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Tải ảnh lên
-                  </Button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageUpload}
-                    accept="image/*"
-                    className="hidden"
+            {/* Canvas nằm cạnh nhau */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Input Canvas */}
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
+                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
+                  <canvas
+                    ref={inputCanvasRef}
+                    className="max-w-full cursor-crosshair"
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onTouchStart={startDrawingTouch}
+                    onTouchMove={drawTouch}
+                    onTouchEnd={stopDrawingTouch}
+                    onClick={deletePathAtPosition}
                   />
+                  {!image && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
+                      <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
+                      <Button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Tải ảnh lên
+                      </Button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+
+              {/* Output Canvas */}
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
+                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
+                  <canvas ref={outputCanvasRef} style={{ display: activeCanvas === "canvas2" ? "block" : "none" }} />
+                  {isProcessing && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+                      <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
+                      <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  onClick={downloadImage}
+                  disabled={!inpaintedImage}
+                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Tải kết quả
+                </Button>
+              </div>
             </div>
 
+            {/* Các nút điều khiển */}
             {image && (
               <div className="flex flex-col gap-4">
                 <div className="flex gap-2">
@@ -824,28 +853,7 @@ export default function ImageInpaintingApp() {
                 </div>
               </div>
             )}
-          </Card>
 
-          {/* Kết quả xử lý */}
-          <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
-            <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-              <canvas ref={outputCanvasRef} style={{ display: activeCanvas === "canvas2" ? "block" : "none" }} />
-              {isProcessing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                  <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
-                  <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
-                </div>
-              )}
-            </div>
-            <Button
-              onClick={downloadImage}
-              disabled={!inpaintedImage}
-              className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Tải kết quả
-            </Button>
             {error && (
               <Alert variant="destructive" className="mt-2 p-4">
                 <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
