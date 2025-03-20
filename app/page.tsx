@@ -91,7 +91,8 @@ export const dynamic = "force-dynamic";
 export default function ImageInpaintingApp() {
   // State
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [resizedImageData, setResizedImageData] = useState<string>("");
+  const [originalImageData, setOriginalImageData] = useState<string>(""); // Lưu ảnh gốc
+  const [resizedImageData, setResizedImageData] = useState<string>(""); // Lưu ảnh đã resize để hiển thị
   const [brushSize, setBrushSize] = useState(20);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
@@ -176,6 +177,21 @@ export default function ImageInpaintingApp() {
       const img = new window.Image();
       img.onload = async () => {
         try {
+          // Lưu ảnh gốc
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = img.width;
+          tempCanvas.height = img.height;
+          const ctx = tempCanvas.getContext("2d");
+          if (!ctx) {
+            tempCanvas.remove();
+            throw new Error("Không thể tạo context cho canvas tạm");
+          }
+          ctx.drawImage(img, 0, 0);
+          const originalData = tempCanvas.toDataURL("image/png");
+          setOriginalImageData(originalData);
+          tempCanvas.remove();
+
+          // Resize ảnh để hiển thị
           const maxWidth = inputCanvasRef.current?.parentElement?.clientWidth || 500;
           const resizedData = await resizeImage(img, maxWidth);
           setResizedImageData(resizedData);
@@ -493,6 +509,7 @@ export default function ImageInpaintingApp() {
     setPaths([]);
     setInpaintedImage(null);
     setError(null);
+    setOriginalImageData("");
     setResizedImageData("");
     setActiveCanvas("canvas1");
     fileInputRef.current?.click();
@@ -578,7 +595,8 @@ export default function ImageInpaintingApp() {
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-      const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage);
+      // Sử dụng ảnh gốc thay vì ảnh đã resize
+      const resultUrl = await processInpainting(originalImageData, productImageBase64, maskImage);
       console.log("Result URL from TensorArt:", resultUrl);
 
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
@@ -655,29 +673,78 @@ export default function ImageInpaintingApp() {
       throw new Error("Không tìm thấy canvas hoặc ảnh");
     }
 
-    const maskCtx = maskCanvas.getContext("2d");
-    if (!maskCtx) throw new Error("Không thể lấy context của mask");
+    // Tạo mask với kích thước gốc của ảnh
+    const originalMaskCanvas = document.createElement("canvas");
+    originalMaskCanvas.width = image.width;
+    originalMaskCanvas.height = image.height;
+    const originalMaskCtx = originalMaskCanvas.getContext("2d");
+    if (!originalMaskCtx) {
+      originalMaskCanvas.remove();
+      throw new Error("Không thể tạo context cho mask gốc");
+    }
 
+    // Tính tỷ lệ giữa kích thước canvas hiển thị và kích thước gốc
+    const scaleX = image.width / inputCanvas.width;
+    const scaleY = image.height / inputCanvas.height;
+
+    // Vẽ lại các đường path lên mask với kích thước gốc
+    originalMaskCtx.clearRect(0, 0, image.width, image.height);
+    originalMaskCtx.lineCap = "round";
+    originalMaskCtx.lineJoin = "round";
+
+    paths.forEach((path) => {
+      if (path.points.length === 0) return;
+
+      originalMaskCtx.beginPath();
+      originalMaskCtx.strokeStyle = path.color;
+      originalMaskCtx.lineWidth = path.width * scaleX; // Điều chỉnh kích thước bút vẽ theo tỷ lệ
+
+      if (path.points.length === 1) {
+        const point = path.points[0];
+        const scaledX = point.x * scaleX;
+        const scaledY = point.y * scaleY;
+        originalMaskCtx.arc(scaledX, scaledY, (path.width * scaleX) / 2, 0, Math.PI * 2);
+        originalMaskCtx.fillStyle = path.color;
+        originalMaskCtx.fill();
+      } else {
+        originalMaskCtx.moveTo(path.points[0].x * scaleX, path.points[0].y * scaleY);
+        for (let i = 0; i < path.points.length - 1; i++) {
+          const xc = ((path.points[i].x + path.points[i + 1].x) / 2) * scaleX;
+          const yc = ((path.points[i].y + path.points[i + 1].y) / 2) * scaleY;
+          originalMaskCtx.quadraticCurveTo(
+            path.points[i].x * scaleX,
+            path.points[i].y * scaleY,
+            xc,
+            yc
+          );
+        }
+        originalMaskCtx.stroke();
+      }
+    });
+
+    // Tạo mask đen trắng với kích thước gốc
     const maskCanvasBW = document.createElement("canvas");
-    maskCanvasBW.width = inputCanvas.width;
-    maskCanvasBW.height = inputCanvas.height;
+    maskCanvasBW.width = image.width;
+    maskCanvasBW.height = image.height;
     const maskCtxBW = maskCanvasBW.getContext("2d");
     if (!maskCtxBW) {
       maskCanvasBW.remove();
+      originalMaskCanvas.remove();
       throw new Error("Không thể tạo context cho mask BW");
     }
 
-    const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    const maskImageData = originalMaskCtx.getImageData(0, 0, image.width, image.height);
     const maskData = maskImageData.data;
 
     for (let i = 0; i < maskData.length; i += 4) {
       const maskValue = maskData[i];
       maskCtxBW.fillStyle = maskValue > 0 ? "white" : "black";
-      maskCtxBW.fillRect((i / 4) % inputCanvas.width, Math.floor((i / 4) / inputCanvas.width), 1, 1);
+      maskCtxBW.fillRect((i / 4) % image.width, Math.floor((i / 4) / image.width), 1, 1);
     }
 
     const result = maskCanvasBW.toDataURL("image/png");
     maskCanvasBW.remove();
+    originalMaskCanvas.remove();
     return result;
   };
 
