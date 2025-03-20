@@ -706,7 +706,7 @@ export default function ImageInpaintingApp() {
         CaslaQuartz AI
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr] gap-8 flex-grow">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
         {/* Cột 1: Tải ảnh & Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
