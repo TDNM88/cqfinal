@@ -23,16 +23,16 @@ type Path = {
   width: number;
 };
 
-// Danh sách sản phẩm và câu quote (giữ nguyên như mã gốc)
+// Danh sách sản phẩm và câu quote
 const productGroups = {
-  "STANDARD": [
+  STANDARD: [
     { name: "C1012 - Glacier White", quote: "Glacier với nền trắng kết hợp với những hạt thạch anh kích thước nhỏ..." },
     { name: "C1026 - Polar", quote: "Polar với nền trắng kết hợp với những hạt thạch anh kích thước lớn..." },
     { name: "C1005 - Milky White", quote: "Milky White với màu trắng tinh khiết, nhẹ nhàng..." },
     { name: "C3168 - Silver Wave", quote: "Silver Wave chủ đạo với nền trắng, hòa cùng đó là những ánh bạc..." },
     { name: "C3269 - Ash Grey", quote: "Ash Grey với màu nền tông xám, kết hợp với bond trầm..." },
   ],
-  "DELUXE": [
+  DELUXE: [
     { name: "C2103 - Onyx Carrara", quote: "Onyx Carrara lấy cảm hứng từ dòng đá cẩm thạch Carrara..." },
     { name: "C2104 - Massa", quote: "Massa được lấy cảm hứng từ dòng đá cẩm thạch Carrara..." },
     { name: "C3105 - Casla Cloudy", quote: "Casla Cloudy với tông xanh nhẹ nhàng..." },
@@ -46,7 +46,7 @@ const productGroups = {
     { name: "C5225 - Amber", quote: "Amber khác lạ với các đường vân màu nâu đậm..." },
     { name: "C5240 - Spring", quote: "Spring lấy cảm hứng từ các yếu tố tương phản sáng tối..." },
   ],
-  "LUXURY": [
+  LUXURY: [
     { name: "C1102 - Super White", quote: "Super White mang tông màu trắng sáng đặc biệt..." },
     { name: "C1205 - Casla Everest", quote: "Casla Everest được lấy cảm hứng từ ngọn núi Everest..." },
     { name: "C4246 - Casla Mystery", quote: "Casla Mystery trừu tượng trong khối kết cụ thể..." },
@@ -123,8 +123,34 @@ export default function ImageInpaintingApp() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     };
+
+    // Khởi tạo Canvas 1
     initCanvas(inputCanvasRef.current);
-    initCanvas(outputCanvasRef.current);
+
+    // Khởi tạo Canvas 2 với ảnh placeholder
+    const outputCanvas = outputCanvasRef.current;
+    if (outputCanvas) {
+      const ctx = outputCanvas.getContext("2d");
+      if (ctx) {
+        const placeholderImg = new Image();
+        placeholderImg.src = "/logo2048.jpg"; // Đường dẫn ảnh trong thư mục public
+        placeholderImg.onload = () => {
+          const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+          const aspectRatio = placeholderImg.width / placeholderImg.height;
+          const canvasWidth = Math.min(placeholderImg.width, maxWidth);
+          const canvasHeight = canvasWidth / aspectRatio;
+
+          outputCanvas.width = canvasWidth;
+          outputCanvas.height = canvasHeight;
+          ctx.drawImage(placeholderImg, 0, 0, canvasWidth, canvasHeight);
+        };
+        placeholderImg.onerror = () => {
+          console.error("Không thể tải ảnh placeholder /logo2048.jpg");
+          initCanvas(outputCanvas); // Nếu lỗi, chỉ đổ màu nền xám
+        };
+      }
+    }
+
     maskCanvasRef.current = document.createElement("canvas");
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
@@ -223,6 +249,7 @@ export default function ImageInpaintingApp() {
     if (outputCanvas) {
       outputCanvas.width = canvasWidth;
       outputCanvas.height = canvasHeight;
+      // Không vẽ gì lên Canvas 2 ở đây, giữ placeholder
     }
     maskCanvas.width = canvasWidth;
     maskCanvas.height = canvasHeight;
@@ -237,22 +264,6 @@ export default function ImageInpaintingApp() {
 
     const maskCtx = maskCanvas.getContext("2d");
     if (maskCtx) maskCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    if (outputCanvas) drawInformationOnOutputCanvas();
-  };
-
-  const drawInformationOnOutputCanvas = () => {
-    const canvas = outputCanvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.fillStyle = "#F3F4F6";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#1E3A8A";
-    ctx.font = '16px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-    ctx.textAlign = "center";
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -510,12 +521,36 @@ export default function ImageInpaintingApp() {
     setOriginalImageData("");
     setResizedImageData("");
     setActiveCanvas(null);
+
     const inputCanvas = inputCanvasRef.current;
     if (inputCanvas) {
       const ctx = inputCanvas.getContext("2d");
       if (ctx) {
         ctx.fillStyle = "#F3F4F6";
         ctx.fillRect(0, 0, inputCanvas.width, inputCanvas.height);
+      }
+    }
+
+    const outputCanvas = outputCanvasRef.current;
+    if (outputCanvas) {
+      const ctx = outputCanvas.getContext("2d");
+      if (ctx) {
+        const placeholderImg = new Image();
+        placeholderImg.src = "/logo2048.jpg";
+        placeholderImg.onload = () => {
+          const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+          const aspectRatio = placeholderImg.width / placeholderImg.height;
+          const canvasWidth = Math.min(placeholderImg.width, maxWidth);
+          const canvasHeight = canvasWidth / aspectRatio;
+
+          outputCanvas.width = canvasWidth;
+          outputCanvas.height = canvasHeight;
+          ctx.drawImage(placeholderImg, 0, 0, canvasWidth, canvasHeight);
+        };
+        placeholderImg.onerror = () => {
+          ctx.fillStyle = "#F3F4F6";
+          ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+        };
       }
     }
   };
