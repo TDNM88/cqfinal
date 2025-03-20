@@ -133,7 +133,7 @@ export default function ImageInpaintingApp() {
       const ctx = outputCanvas.getContext("2d");
       if (ctx) {
         const placeholderImg = new Image();
-        placeholderImg.src = "/logo2048.jpg"; // Đường dẫn ảnh trong thư mục public
+        placeholderImg.src = "/logo2048.jpg";
         placeholderImg.onload = () => {
           const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
           const aspectRatio = placeholderImg.width / placeholderImg.height;
@@ -146,7 +146,7 @@ export default function ImageInpaintingApp() {
         };
         placeholderImg.onerror = () => {
           console.error("Không thể tải ảnh placeholder /logo2048.jpg");
-          initCanvas(outputCanvas); // Nếu lỗi, chỉ đổ màu nền xám
+          initCanvas(outputCanvas);
         };
       }
     }
@@ -249,7 +249,6 @@ export default function ImageInpaintingApp() {
     if (outputCanvas) {
       outputCanvas.width = canvasWidth;
       outputCanvas.height = canvasHeight;
-      // Không vẽ gì lên Canvas 2 ở đây, giữ placeholder
     }
     maskCanvas.width = canvasWidth;
     maskCanvas.height = canvasHeight;
@@ -270,7 +269,7 @@ export default function ImageInpaintingApp() {
     e.preventDefault();
     if (!inputCanvasRef.current || !maskCanvasRef.current) return;
     setIsDrawing(true);
-    setIsErasing(e.button === 2); // Chuột phải để xóa
+    setIsErasing(e.button === 2);
     setActiveCanvas("canvas1");
 
     const rect = inputCanvasRef.current.getBoundingClientRect();
@@ -640,6 +639,15 @@ export default function ImageInpaintingApp() {
       const maskImage = await getCombinedImage();
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
+
+      // Debug dữ liệu đầu vào
+      console.log("Input data for inpainting:", {
+        originalImage: originalImageData.substring(0, 50),
+        productImage: productImageBase64.substring(0, 50),
+        maskImage: maskImage.substring(0, 50),
+        originalImageSize: { width: image.width, height: image.height },
+      });
+
       const resultUrl = await processInpainting(originalImageData, productImageBase64, maskImage);
       console.log("Result URL from TensorArt:", resultUrl);
 
@@ -728,6 +736,7 @@ export default function ImageInpaintingApp() {
 
     const scaleX = image.width / inputCanvas.width;
     const scaleY = image.height / inputCanvas.height;
+    console.log("Scale factors:", { scaleX, scaleY, inputWidth: inputCanvas.width, imageWidth: image.width });
 
     originalMaskCtx.clearRect(0, 0, image.width, image.height);
     originalMaskCtx.lineCap = "round";
@@ -777,12 +786,14 @@ export default function ImageInpaintingApp() {
     const maskData = maskImageData.data;
 
     for (let i = 0; i < maskData.length; i += 4) {
-      const maskValue = maskData[i];
-      maskCtxBW.fillStyle = maskValue > 0 ? "white" : "black";
+      const alpha = maskData[i + 3];
+      maskCtxBW.fillStyle = alpha > 0 ? "white" : "black";
       maskCtxBW.fillRect((i / 4) % image.width, Math.floor((i / 4) / image.width), 1, 1);
     }
 
     const result = maskCanvasBW.toDataURL("image/png");
+    console.log("Mask image generated:", result.substring(0, 50));
+
     maskCanvasBW.remove();
     originalMaskCanvas.remove();
     return result;
