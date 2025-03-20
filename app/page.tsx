@@ -112,7 +112,7 @@ export default function ImageInpaintingApp() {
 
   const { processInpainting } = useInpainting();
 
-  // useEffect khởi tạo canvas (giữ nguyên)
+  // useEffect khởi tạo canvas
   useEffect(() => {
     const initCanvas = (canvas: HTMLCanvasElement | null) => {
       if (!canvas) return;
@@ -492,6 +492,7 @@ export default function ImageInpaintingApp() {
     setInpaintedImage(null);
     setError(null);
     setResizedImageData("");
+    setActiveCanvas("canvas1");
     fileInputRef.current?.click();
   };
 
@@ -604,13 +605,15 @@ export default function ImageInpaintingApp() {
 
   const drawResultOnCanvas = (img: HTMLImageElement) => {
     const outputCanvas = outputCanvasRef.current;
-    if (!outputCanvas) {
-      console.error("outputCanvasRef is null");
+    const inputCanvas = inputCanvasRef.current;
+    if (!outputCanvas || !inputCanvas) {
+      console.error("Canvas refs are null");
       setError("Canvas không khả dụng");
       return;
     }
     const ctx = outputCanvas.getContext("2d");
-    if (!ctx) {
+    const inputCtx = inputCanvas.getContext("2d");
+    if (!ctx || !inputCtx) {
       console.error("Canvas context is null");
       setError("Không thể lấy context của canvas");
       return;
@@ -629,9 +632,13 @@ export default function ImageInpaintingApp() {
 
     outputCanvas.width = canvasWidth;
     outputCanvas.height = canvasHeight;
+    inputCanvas.width = canvasWidth;
+    inputCanvas.height = canvasHeight;
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    inputCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    inputCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
     console.log("Image drawn on canvas with size:", canvasWidth, canvasHeight);
   };
 
@@ -693,12 +700,112 @@ export default function ImageInpaintingApp() {
         CaslaQuartz AI
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-grow">
+      <div className="grid grid-cols-1 lg:grid-cols-[5fr_3fr] gap-8 flex-grow">
         {/* Cột 1: Tải ảnh & Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            {/* Canvas nằm cạnh nhau */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Màn hình nhỏ: Chỉ hiển thị 1 canvas */}
+            <div className="lg:hidden">
+              <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
+                <canvas
+                  ref={inputCanvasRef}
+                  className="max-w-full cursor-crosshair"
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onTouchStart={startDrawingTouch}
+                  onTouchMove={drawTouch}
+                  onTouchEnd={stopDrawingTouch}
+                  onClick={deletePathAtPosition}
+                />
+                {!image && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
+                    <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Tải ảnh lên
+                    </Button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                  </div>
+                )}
+                {isProcessing && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+                    <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
+                    <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
+                    <div className="mt-4 text-center">
+                      <p className="text-blue-900 font-medium">Ý nghĩa sản phẩm</p>
+                      <p className="text-sm text-gray-700">{getProductQuote()}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Nút xử lý phần vẽ mask (dạng icon) */}
+              {image && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <Upload className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    onClick={handleReloadImage}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <RefreshCw className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    onClick={() => setIsBrushSizeOpen(true)}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <Paintbrush className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    onClick={saveCanvasState}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <Save className="h-5 w-5" />
+                  </Button>
+                  {isBrushSizeOpen && (
+                    <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
+                      <label className="text-sm font-medium text-blue-900">
+                        Kích thước: {brushSize}px
+                      </label>
+                      <Slider
+                        value={[brushSize]}
+                        min={1}
+                        max={50}
+                        step={1}
+                        onValueChange={(value) => setBrushSize(value[0])}
+                        className="mt-1"
+                      />
+                      <Button
+                        onClick={() => setIsBrushSizeOpen(false)}
+                        className="mt-2"
+                      >
+                        Đóng
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Màn hình lớn: Hiển thị 2 canvas cạnh nhau */}
+            <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Input Canvas */}
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
@@ -762,97 +869,99 @@ export default function ImageInpaintingApp() {
               </div>
             </div>
 
-            {/* Các nút điều khiển */}
-            {image && (
-              <div className="flex flex-col gap-4">
-                <div className="flex gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">...</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Tải ảnh mới
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleReloadImage}>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Xóa mask
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={saveCanvasState}>
-                        <Save className="h-4 w-4 mr-2" />
-                        Lưu ảnh
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+            {/* Các nút điều khiển (màn hình lớn) */}
+            <div className="hidden lg:block">
+              {image && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">...</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Tải ảnh mới
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleReloadImage}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Xóa mask
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={saveCanvasState}>
+                          <Save className="h-4 w-4 mr-2" />
+                          Lưu ảnh
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-                <Tabs defaultValue="brush" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-blue-50 rounded-md">
-                    <TabsTrigger
-                      value="brush"
-                      className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
-                    >
-                      <Paintbrush className="h-4 w-4 mr-1" />
-                      Bút vẽ
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="info"
-                      className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
-                    >
-                      <Info className="h-4 w-4 mr-1" />
-                      Hướng dẫn
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="brush" className="space-y-2 mt-2">
-                    <Button onClick={() => setIsBrushSizeOpen(true)}>Kích thước</Button>
-                    {isBrushSizeOpen && (
-                      <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
-                        <label className="text-sm font-medium text-blue-900">
-                          Kích thước: {brushSize}px
-                        </label>
-                        <Slider
-                          value={[brushSize]}
-                          min={1}
-                          max={50}
-                          step={1}
-                          onValueChange={(value) => setBrushSize(value[0])}
-                          className="mt-1"
-                        />
-                        <Button
-                          onClick={() => setIsBrushSizeOpen(false)}
-                          className="mt-2"
-                        >
-                          Đóng
-                        </Button>
+                  <Tabs defaultValue="brush" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-blue-50 rounded-md">
+                      <TabsTrigger
+                        value="brush"
+                        className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
+                      >
+                        <Paintbrush className="h-4 w-4 mr-1" />
+                        Bút vẽ
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="info"
+                        className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100 transition-all duration-200"
+                      >
+                        <Info className="h-4 w-4 mr-1" />
+                        Hướng dẫn
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="brush" className="space-y-2 mt-2">
+                      <Button onClick={() => setIsBrushSizeOpen(true)}>Kích thước</Button>
+                      {isBrushSizeOpen && (
+                        <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
+                          <label className="text-sm font-medium text-blue-900">
+                            Kích thước: {brushSize}px
+                          </label>
+                          <Slider
+                            value={[brushSize]}
+                            min={1}
+                            max={50}
+                            step={1}
+                            onValueChange={(value) => setBrushSize(value[0])}
+                            className="mt-1"
+                          />
+                          <Button
+                            onClick={() => setIsBrushSizeOpen(false)}
+                            className="mt-2"
+                          >
+                            Đóng
+                          </Button>
+                        </div>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="info" className="space-y-2 mt-2">
+                      <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
+                        <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
+                        <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy, nhấp để xóa).</p>
+                        <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
                       </div>
-                    )}
-                  </TabsContent>
-                  <TabsContent value="info" className="space-y-2 mt-2">
-                    <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
-                      <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy, nhấp để xóa).</p>
-                      <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                    </TabsContent>
+                  </Tabs>
 
-                <div className="flex gap-4">
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!image || isProcessing || !selectedProduct}
-                    className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Send className="h-4 w-4 mr-2" />
-                    )}
-                    Xử lý ảnh
-                  </Button>
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!image || isProcessing || !selectedProduct}
+                      className="flex-1 bg-blue-900 hover:bg-blue-800 text-white"
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2" />
+                      )}
+                      Xử lý ảnh
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {error && (
               <Alert variant="destructive" className="mt-2 p-4">
@@ -861,10 +970,80 @@ export default function ImageInpaintingApp() {
               </Alert>
             )}
           </Card>
+
+          {/* CaslaQuartz Menu (màn hình nhỏ) */}
+          <div className="lg:hidden">
+            <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md">
+              <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
+              <ScrollArea className="h-[300px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
+                <div className="flex flex-col gap-6">
+                  {Object.entries(productGroups).map(([groupName, products]) => (
+                    <div key={groupName} className="flex flex-col gap-2">
+                      <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-wide border-b border-gray-300 pb-1">
+                        {groupName}
+                      </h3>
+                      <div className="flex flex-col gap-2">
+                        {products.map((product) => (
+                          <Button
+                            key={product.name}
+                            onClick={() => handleProductSelect(product.name)}
+                            className={`w-full text-left justify-start py-2 px-4 text-sm transition-all ${
+                              selectedProduct === product.name
+                                ? "bg-blue-900 text-white hover:bg-blue-800"
+                                : "bg-white text-blue-900 hover:bg-gray-100"
+                            }`}
+                            title={product.name}
+                            style={{
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {product.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              <div className="mt-auto">
+                <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}`}>
+                  <AlertTitle className="text-blue-900 font-medium">Ý nghĩa sản phẩm</AlertTitle>
+                  <AlertDescription className="text-sm text-gray-700">
+                    {getProductQuote()}
+                  </AlertDescription>
+                </Alert>
+              </div>
+              {image && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!image || isProcessing || !selectedProduct}
+                  className="bg-blue-900 hover:bg-blue-800 text-white"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Xử lý ảnh
+                </Button>
+              )}
+              {inpaintedImage && (
+                <Button
+                  onClick={downloadImage}
+                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Tải kết quả
+                </Button>
+              )}
+            </Card>
+          </div>
         </div>
 
-        {/* Cột 2: CaslaQuartz Menu */}
-        <div className="flex flex-col space-y-4">
+        {/* Cột 2: CaslaQuartz Menu (màn hình lớn) */}
+        <div className="hidden lg:flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
             <ScrollArea className="h-[600px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
