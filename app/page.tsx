@@ -196,7 +196,7 @@ export default function ImageInpaintingApp() {
     const inputCanvas = inputCanvasRef.current;
     const outputCanvas = outputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
-    if (!inputCanvas || !outputCanvas || !maskCanvas) return;
+    if (!inputCanvas || !maskCanvas) return;
 
     const maxWidth = inputCanvas.parentElement?.clientWidth || 500;
     const aspectRatio = img.width / img.height;
@@ -206,8 +206,10 @@ export default function ImageInpaintingApp() {
 
     inputCanvas.width = canvasWidth;
     inputCanvas.height = canvasHeight;
-    outputCanvas.width = canvasWidth;
-    outputCanvas.height = canvasHeight;
+    if (outputCanvas) {
+      outputCanvas.width = canvasWidth;
+      outputCanvas.height = canvasHeight;
+    }
     maskCanvas.width = canvasWidth;
     maskCanvas.height = canvasHeight;
 
@@ -222,7 +224,7 @@ export default function ImageInpaintingApp() {
     const maskCtx = maskCanvas.getContext("2d");
     if (maskCtx) maskCtx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    drawInformationOnOutputCanvas();
+    if (outputCanvas) drawInformationOnOutputCanvas();
   };
 
   const drawInformationOnOutputCanvas = () => {
@@ -604,17 +606,16 @@ export default function ImageInpaintingApp() {
   };
 
   const drawResultOnCanvas = (img: HTMLImageElement) => {
-    const outputCanvas = outputCanvasRef.current;
     const inputCanvas = inputCanvasRef.current;
-    if (!outputCanvas || !inputCanvas) {
-      console.error("Canvas refs are null");
+    const outputCanvas = outputCanvasRef.current;
+    if (!inputCanvas) {
+      console.error("Input canvas ref is null");
       setError("Canvas không khả dụng");
       return;
     }
-    const ctx = outputCanvas.getContext("2d");
     const inputCtx = inputCanvas.getContext("2d");
-    if (!ctx || !inputCtx) {
-      console.error("Canvas context is null");
+    if (!inputCtx) {
+      console.error("Input canvas context is null");
       setError("Không thể lấy context của canvas");
       return;
     }
@@ -625,18 +626,23 @@ export default function ImageInpaintingApp() {
       return;
     }
 
-    const maxWidth = outputCanvas.parentElement?.clientWidth || 500;
+    const maxWidth = inputCanvas.parentElement?.clientWidth || 500;
     const aspectRatio = img.width / img.height;
     const canvasWidth = Math.min(img.width, maxWidth);
     const canvasHeight = canvasWidth / aspectRatio;
 
-    outputCanvas.width = canvasWidth;
-    outputCanvas.height = canvasHeight;
     inputCanvas.width = canvasWidth;
     inputCanvas.height = canvasHeight;
+    if (outputCanvas) {
+      outputCanvas.width = canvasWidth;
+      outputCanvas.height = canvasHeight;
+      const outputCtx = outputCanvas.getContext("2d");
+      if (outputCtx) {
+        outputCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+        outputCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+      }
+    }
 
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
     inputCtx.clearRect(0, 0, canvasWidth, canvasHeight);
     inputCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
     console.log("Image drawn on canvas with size:", canvasWidth, canvasHeight);
@@ -850,7 +856,7 @@ export default function ImageInpaintingApp() {
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
                 <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-                  <canvas ref={outputCanvasRef} style={{ display: activeCanvas === "canvas2" ? "block" : "none" }} />
+                  <canvas ref={outputCanvasRef} />
                   {isProcessing && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
                       <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
