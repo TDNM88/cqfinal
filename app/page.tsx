@@ -15,15 +15,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-// Định nghĩa kiểu Path cho các đường vẽ
 type Path = {
   points: { x: number; y: number }[];
   color: string;
   width: number;
 };
 
-// Danh sách sản phẩm và câu quote
 const productGroups = {
   "STANDARD": [
     { name: "C1012 - Glacier White", quote: "Glacier với nền trắng kết hợp với những hạt thạch anh kích thước nhỏ, kết hợp với ánh sáng tạo ra chiều sâu cho bề mặt, độ cứng cao, bền đẹp, phù hợp với các công trình thương mại" },
@@ -85,11 +93,9 @@ const products = Object.fromEntries(
   ])
 );
 
-// Vô hiệu hóa prerendering tĩnh
 export const dynamic = "force-dynamic";
 
 export default function ImageInpaintingApp() {
-  // State
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [originalImageData, setOriginalImageData] = useState<string>("");
   const [resizedImageData, setResizedImageData] = useState<string>("");
@@ -104,8 +110,14 @@ export default function ImageInpaintingApp() {
   const [paths, setPaths] = useState<Path[]>([]);
   const [activeCanvas, setActiveCanvas] = useState<"canvas1" | "canvas2" | null>(null);
   const [isBrushSizeOpen, setIsBrushSizeOpen] = useState(false);
+  const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({
+    phone: "",
+    email: "",
+    field: "",
+  });
+  const [isSubmittingInfo, setIsSubmittingInfo] = useState(false);
 
-  // Refs
   const inputCanvasRef = useRef<HTMLCanvasElement>(null);
   const outputCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,7 +125,6 @@ export default function ImageInpaintingApp() {
 
   const { processInpainting } = useInpainting();
 
-  // useEffect khởi tạo canvas
   useEffect(() => {
     const initCanvas = (canvas: HTMLCanvasElement | null) => {
       if (!canvas) return;
@@ -124,10 +135,8 @@ export default function ImageInpaintingApp() {
       }
     };
 
-    // Khởi tạo Canvas 1
     initCanvas(inputCanvasRef.current);
 
-    // Khởi tạo Canvas 2 với ảnh placeholder
     const outputCanvas = outputCanvasRef.current;
     if (outputCanvas) {
       const ctx = outputCanvas.getContext("2d");
@@ -640,7 +649,6 @@ export default function ImageInpaintingApp() {
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
 
-      // Debug dữ liệu đầu vào
       console.log("Input data for inpainting:", {
         originalImage: originalImageData.substring(0, 50),
         productImage: productImageBase64.substring(0, 50),
@@ -804,11 +812,51 @@ export default function ImageInpaintingApp() {
       setError("Không có ảnh kết quả để tải");
       return;
     }
-    const link = document.createElement("a");
-    link.download = "ket-qua-xu-ly.png";
-    link.href = inpaintedImage;
-    link.click();
-    link.remove();
+    if (customerInfo.phone && customerInfo.email && customerInfo.field) {
+      const link = document.createElement("a");
+      link.download = "ket-qua-xu-ly.png";
+      link.href = inpaintedImage;
+      link.click();
+      link.remove();
+    } else {
+      setIsCustomerInfoOpen(true);
+    }
+  };
+
+  const handleCustomerInfoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingInfo(true);
+
+    try {
+      const response = await fetch("/api/customer-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: customerInfo.phone,
+          email: customerInfo.email,
+          field: customerInfo.field,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Lỗi khi gửi thông tin khách hàng");
+      }
+
+      const data = await response.json();
+      console.log("Customer info saved:", data);
+
+      // Sau khi lưu thành công, tiến hành tải ảnh
+      downloadImage();
+      setIsCustomerInfoOpen(false);
+    } catch (err) {
+      console.error("Error saving customer info:", err);
+      setError(err instanceof Error ? err.message : "Không thể lưu thông tin khách hàng");
+    } finally {
+      setIsSubmittingInfo(false);
+    }
   };
 
   const getProductQuote = () => {
@@ -825,10 +873,8 @@ export default function ImageInpaintingApp() {
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
-        {/* Cột 1: Tải ảnh & Kết quả xử lý */}
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            {/* Màn hình nhỏ: Chỉ hiển thị 1 canvas */}
             <div className="lg:hidden">
               <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
                 <canvas
@@ -927,9 +973,7 @@ export default function ImageInpaintingApp() {
               )}
             </div>
 
-            {/* Màn hình lớn: Hiển thị 2 canvas cạnh nhau */}
             <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Input Canvas */}
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
                 <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
@@ -989,7 +1033,6 @@ export default function ImageInpaintingApp() {
                 )}
               </div>
 
-              {/* Output Canvas */}
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
                 <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
@@ -1009,18 +1052,73 @@ export default function ImageInpaintingApp() {
                     </AlertDescription>
                   </Alert>
                 </div>
-                <Button
-                  onClick={downloadImage}
-                  disabled={!inpaintedImage}
-                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Tải kết quả
-                </Button>
+                <Dialog open={isCustomerInfoOpen} onOpenChange={setIsCustomerInfoOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      onClick={downloadImage}
+                      disabled={!inpaintedImage}
+                      className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Tải kết quả
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Thông tin khách hàng</DialogTitle>
+                      <DialogDescription>
+                        Vui lòng cung cấp thông tin để tải kết quả
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCustomerInfoSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Số điện thoại</Label>
+                        <Input
+                          id="phone"
+                          value={customerInfo.phone}
+                          onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                          required
+                          type="tel"
+                          placeholder="Nhập số điện thoại"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          value={customerInfo.email}
+                          onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                          required
+                          type="email"
+                          placeholder="Nhập email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="field">Lĩnh vực làm việc</Label>
+                        <Input
+                          id="field"
+                          value={customerInfo.field}
+                          onChange={(e) => setCustomerInfo({ ...customerInfo, field: e.target.value })}
+                          required
+                          placeholder="Nhập lĩnh vực làm việc"
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-blue-900 hover:bg-blue-800 text-white"
+                        disabled={isSubmittingInfo}
+                      >
+                        {isSubmittingInfo ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Xác nhận và Tải
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 
-            {/* Các nút điều khiển (màn hình lớn) */}
             <div className="hidden lg:block">
               {image && (
                 <div className="flex flex-col gap-4">
@@ -1097,7 +1195,6 @@ export default function ImageInpaintingApp() {
             )}
           </Card>
 
-          {/* CaslaQuartz Menu (màn hình nhỏ) */}
           <div className="lg:hidden">
             <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md">
               <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
@@ -1156,19 +1253,92 @@ export default function ImageInpaintingApp() {
                 </Button>
               )}
               {inpaintedImage && (
-                <Button
-                  onClick={downloadImage}
-                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Tải kết quả
-                </Button>
+                <Dialog open={isCustomerInfoOpen} onOpenChange={setIsCustomerInfoOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      onClick={downloadImage}
+                      className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Tải kết quả
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-semibold text-blue-900">
+                      Thông Tin Khách Hàng
+                    </DialogTitle>
+                    <DialogDescription className="text-sm text-gray-600">
+                      Vui lòng điền đầy đủ thông tin dưới đây để tải kết quả xử lý ảnh. Các thông tin này sẽ giúp chúng tôi phục vụ bạn tốt hơn.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleCustomerInfoSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                        Số Điện Thoại <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="phone"
+                        value={customerInfo.phone}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                        required
+                        type="tel"
+                        placeholder="Ví dụ: 0901234567"
+                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500">Vui lòng nhập số điện thoại chính xác (9-11 số).</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                        Địa Chỉ Email <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="email"
+                        value={customerInfo.email}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                        required
+                        type="email"
+                        placeholder="Ví dụ: tenkhachhang@email.com"
+                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500">Email sẽ được sử dụng để liên hệ và gửi thông tin.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="field" className="text-sm font-medium text-gray-700">
+                        Lĩnh Vực Công Tác <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="field"
+                        value={customerInfo.field}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, field: e.target.value })}
+                        required
+                        placeholder="Ví dụ: Thiết kế nội thất, Kiến trúc"
+                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500">Thông tin này giúp chúng tôi hiểu rõ hơn về nhu cầu của bạn.</p>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full bg-blue-900 hover:bg-blue-800 text-white font-medium py-2 transition-all duration-200"
+                      disabled={isSubmittingInfo}
+                    >
+                      {isSubmittingInfo ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Đang Xử Lý...
+                        </>
+                      ) : (
+                        "Xác Nhận & Tải Kết Quả"
+                      )}
+                    </Button>
+                  </form>
+                </DialogContent>
+                </Dialog>
               )}
             </Card>
           </div>
         </div>
 
-        {/* Cột 2: CaslaQuartz Menu (màn hình lớn) */}
         <div className="hidden lg:flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
