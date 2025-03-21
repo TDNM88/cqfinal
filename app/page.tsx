@@ -9,6 +9,7 @@ import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw, Save } fr
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useInpainting } from "@/hooks/useInpainting";
+import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
