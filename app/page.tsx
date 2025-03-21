@@ -118,21 +118,24 @@ export default function ImageInpaintingApp() {
     };
     initCanvas(inputCanvasRef.current);
     initCanvas(outputCanvasRef.current);
-
+  
     maskCanvasRef.current = document.createElement("canvas");
-
+  
     if (isMaskModalOpen && maskModalCanvasRef.current && originalImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
+        // Đặt kích thước canvas bằng kích thước ảnh gốc
         canvas.width = img.width;
         canvas.height = img.height;
-
-        const maxDisplayWidth = window.innerWidth * 0.9;
-        const maxDisplayHeight = window.innerHeight * 0.8;
+  
+        // Tăng kích thước hiển thị lên, tối đa 95% màn hình
+        const maxDisplayWidth = window.innerWidth * 0.95; // Tăng từ 0.9 lên 0.95
+        const maxDisplayHeight = window.innerHeight * 0.95; // Tăng từ 0.8 lên 0.95
         let displayWidth = img.width;
         let displayHeight = img.height;
-
+  
+        // Nếu ảnh lớn hơn kích thước tối đa, điều chỉnh tỷ lệ
         if (displayWidth > maxDisplayWidth) {
           displayWidth = maxDisplayWidth;
           displayHeight = displayWidth * (img.height / img.width);
@@ -141,10 +144,11 @@ export default function ImageInpaintingApp() {
           displayHeight = maxDisplayHeight;
           displayWidth = displayHeight * (img.width / img.height);
         }
-
+  
+        // Đặt kích thước hiển thị
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
-
+  
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, img.width, img.height);
         redrawCanvas();
@@ -152,11 +156,13 @@ export default function ImageInpaintingApp() {
       img.onerror = () => setError("Không thể tải ảnh trong modal");
       img.src = originalImageData;
     }
-
+  
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
   }, [isMaskModalOpen, originalImageData]);
+
+
 
   const resizeImage = (img: HTMLImageElement): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -772,7 +778,7 @@ export default function ImageInpaintingApp() {
                         Vẽ Mask
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-hidden p-6 bg-white rounded-lg">
+                    <DialogContent className="max-w-[fit-content] max-h-[fit-content] overflow-hidden p-6 bg-white rounded-lg">
                       <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-blue-900">
                           Vẽ Mask
