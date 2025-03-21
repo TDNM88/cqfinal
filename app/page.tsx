@@ -1,30 +1,21 @@
- "use client";
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Upload,
   Download,
-  Paintbrush,
   Loader2,
-  Info,
   Send,
-  RefreshCw,
-  Eraser,
   Undo,
   Redo,
   ZoomIn,
   ZoomOut,
-  HelpCircle,
   X,
-  Check,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -40,7 +31,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// Hook useInpainting từ mã bạn cung cấp
+// Hook useInpainting (giữ nguyên như mã của bạn)
 const TENSOR_ART_API_URL = "https://ap-east-1.tensorart.cloud/v1";
 const WORKFLOW_TEMPLATE_ID = "837405094118019506";
 
@@ -170,14 +161,13 @@ export function useInpainting() {
       const jobId = await createInpaintingJob(uploadedImageId, productImageId, maskImageId);
 
       const startTime = Date.now();
-      const timeout = 300000; // 5 phút
+      const timeout = 300000;
       while (Date.now() - startTime < timeout) {
         const response = await fetch(`${TENSOR_ART_API_URL}/jobs/${jobId}`, {
           headers: { "Authorization": `Bearer ${process.env.NEXT_PUBLIC_TENSOR_ART_API_KEY}` },
         });
         const data = await response.json();
 
-        // Cập nhật tiến trình dựa trên thời gian đã trôi qua (giả định)
         const elapsed = Date.now() - startTime;
         const progress = Math.min(Math.floor((elapsed / timeout) * 100), 95);
         if (onProgress) onProgress(progress);
@@ -278,11 +268,9 @@ export const dynamic = "force-dynamic";
 export default function ImageInpaintingApp() {
   // State
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [resizedImageData, setResizedImageData] = useState<string>("");
   const [brushSize, setBrushSize] = useState(20);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
-  const [maskOpacity, setMaskOpacity] = useState(0.5);
   const [isProcessing, setIsProcessing] = useState(false);
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -290,14 +278,9 @@ export default function ImageInpaintingApp() {
   const [paths, setPaths] = useState<Path[]>([]);
   const [pathsHistory, setPathsHistory] = useState<Path[][]>([]);
   const [redoStack, setRedoStack] = useState<Path[][]>([]);
-  const [isBrushSizeOpen, setIsBrushSizeOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPanPosition, setLastPanPosition] = useState({ x: 0, y: 0 });
-  const [showTutorial, setShowTutorial] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
-
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     Object.keys(productGroups).reduce((acc, key) => ({ ...acc, [key]: true }), {}),
   );
@@ -305,11 +288,7 @@ export default function ImageInpaintingApp() {
 
   // Customer info states
   const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(false);
-  const [customerInfo, setCustomerInfo] = useState({
-    phone: "",
-    email: "",
-    field: "",
-  });
+  const [customerInfo, setCustomerInfo] = useState({ phone: "", email: "", field: "" });
   const [isSubmittingInfo, setIsSubmittingInfo] = useState(false);
 
   // Refs
@@ -318,10 +297,49 @@ export default function ImageInpaintingApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const { processInpainting, loading, error: inpaintingError } = useInpainting();
+  const { processInpainting, loading } = useInpainting();
   const { toast } = useToast();
 
-  // useEffect khởi tạo canvas và phím tắt
+  // Hàm vẽ lại canvas
+  const redrawCanvas = () => {
+    const canvas = inputCanvasRef.current;
+    if (!canvas || !image) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Xóa canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Áp dụng zoom và pan
+    ctx.save();
+    ctx.translate(panOffset.x, panOffset.y);
+    ctx.scale(zoomLevel, zoomLevel);
+
+    // Vẽ ảnh gốc
+    ctx.drawImage(image, 0, 0);
+
+    // Vẽ các đường mask
+    paths.forEach((path) => {
+      ctx.beginPath();
+      ctx.strokeStyle = path.color === "white" ? "rgba(255, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.5)"; // Hiển thị màu trên ảnh
+      ctx.lineWidth = path.width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      path.points.forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point.x, point.y);
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+      });
+      ctx.stroke();
+    });
+
+    ctx.restore();
+  };
+
+  // useEffect khởi tạo và cập nhật canvas
   useEffect(() => {
     const initCanvas = (canvas: HTMLCanvasElement | null) => {
       if (!canvas) return;
@@ -342,7 +360,6 @@ export default function ImageInpaintingApp() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "z") handleUndo();
       if (e.ctrlKey && e.key === "y") handleRedo();
-      if (e.key === "e") setIsErasing((prev) => !prev);
       if (e.key === "+") handleZoomIn();
       if (e.key === "-") handleZoomOut();
     };
@@ -351,7 +368,12 @@ export default function ImageInpaintingApp() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Các hàm xử lý cơ bản
+  // Cập nhật canvas khi paths, zoomLevel hoặc panOffset thay đổi
+  useEffect(() => {
+    redrawCanvas();
+  }, [paths, zoomLevel, panOffset, image]);
+
+  // Xử lý tải ảnh
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -369,17 +391,15 @@ export default function ImageInpaintingApp() {
 
       const canvas = inputCanvasRef.current;
       if (canvas) {
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-        }
+        canvas.width = img.width;
+        canvas.height = img.height;
+        redrawCanvas();
       }
     };
     img.src = URL.createObjectURL(file);
   };
 
+  // Xử lý vẽ
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!inputCanvasRef.current || !maskCanvasRef.current || !image) return;
     setIsDrawing(true);
@@ -388,30 +408,17 @@ export default function ImageInpaintingApp() {
     const x = (e.clientX - rect.left - panOffset.x) / zoomLevel;
     const y = (e.clientY - rect.top - panOffset.y) / zoomLevel;
 
-    const maskCtx = maskCanvasRef.current.getContext("2d");
-    if (!maskCtx) return;
-    maskCtx.lineCap = "round";
-    maskCtx.lineJoin = "round";
-    maskCtx.strokeStyle = isErasing ? "black" : "white";
-    maskCtx.lineWidth = brushSize;
-    maskCtx.beginPath();
-    maskCtx.moveTo(x, y);
-
     setPathsHistory((prev) => [...prev, [...paths]]);
     setRedoStack([]);
     setPaths((prev) => [...prev, { points: [{ x, y }], color: isErasing ? "black" : "white", width: brushSize }]);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !maskCanvasRef.current) return;
-    const rect = inputCanvasRef.current!.getBoundingClientRect();
+    if (!isDrawing || !inputCanvasRef.current) return;
+    const rect = inputCanvasRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left - panOffset.x) / zoomLevel;
     const y = (e.clientY - rect.top - panOffset.y) / zoomLevel;
 
-    const maskCtx = maskCanvasRef.current.getContext("2d");
-    if (!maskCtx) return;
-    maskCtx.lineTo(x, y);
-    maskCtx.stroke();
     setPaths((prev) => {
       const newPaths = [...prev];
       newPaths[newPaths.length - 1].points.push({ x, y });
@@ -421,7 +428,6 @@ export default function ImageInpaintingApp() {
 
   const stopDrawing = () => {
     setIsDrawing(false);
-    if (maskCanvasRef.current) maskCanvasRef.current.getContext("2d")?.closePath();
   };
 
   const handleUndo = () => {
@@ -444,11 +450,7 @@ export default function ImageInpaintingApp() {
   const handleSubmit = async () => {
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
-      toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng kiểm tra lại ảnh, sản phẩm và mask",
-        variant: "destructive",
-      });
+      toast({ title: "Thiếu thông tin", description: "Vui lòng kiểm tra lại ảnh, sản phẩm và mask", variant: "destructive" });
       return;
     }
 
@@ -460,15 +462,11 @@ export default function ImageInpaintingApp() {
       const inputCanvas = inputCanvasRef.current;
       const maskCanvas = maskCanvasRef.current;
 
-      if (!inputCanvas || !maskCanvas) {
-        throw new Error("Không thể truy cập canvas");
-      }
+      if (!inputCanvas || !maskCanvas) throw new Error("Không thể truy cập canvas");
 
-      // Điều chỉnh kích thước mask canvas để khớp với ảnh gốc
       maskCanvas.width = image.width;
       maskCanvas.height = image.height;
 
-      // Vẽ lại tất cả các đường path lên mask canvas
       const maskCtx = maskCanvas.getContext("2d");
       if (maskCtx) {
         maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
@@ -479,36 +477,26 @@ export default function ImageInpaintingApp() {
           maskCtx.lineCap = "round";
           maskCtx.lineJoin = "round";
           path.points.forEach((point, index) => {
-            if (index === 0) {
-              maskCtx.moveTo(point.x, point.y);
-            } else {
-              maskCtx.lineTo(point.x, point.y);
-            }
+            if (index === 0) maskCtx.moveTo(point.x, point.y);
+            else maskCtx.lineTo(point.x, point.y);
           });
           maskCtx.stroke();
-          maskCtx.closePath();
         });
       }
 
-      // Chuyển canvas thành dữ liệu base64
       const imageData = inputCanvas.toDataURL("image/png");
       const maskData = maskCanvas.toDataURL("image/png");
-      const productImageData = products[selectedProduct]; // Đường dẫn ảnh sản phẩm
+      const productImageData = products[selectedProduct];
 
-      // Gửi dữ liệu đến TensorArt API qua processInpainting
       const resultUrl = await processInpainting({
         image: imageData,
         productImage: productImageData,
         mask: maskData,
-        onProgress: (progress: number) => {
-          setProcessingProgress(progress);
-        },
+        onProgress: (progress: number) => setProcessingProgress(progress),
       });
 
-      // Cập nhật ảnh kết quả
       setInpaintedImage(resultUrl);
 
-      // Vẽ kết quả lên output canvas
       const outputCanvas = outputCanvasRef.current;
       if (outputCanvas) {
         const ctx = outputCanvas.getContext("2d");
@@ -523,10 +511,7 @@ export default function ImageInpaintingApp() {
         }
       }
 
-      toast({
-        title: "Thành công",
-        description: "Ảnh đã được xử lý thành công",
-      });
+      toast({ title: "Thành công", description: "Ảnh đã được xử lý thành công" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lỗi khi xử lý ảnh");
       toast({
@@ -544,11 +529,7 @@ export default function ImageInpaintingApp() {
 
   const downloadImage = () => {
     if (!inpaintedImage) {
-      toast({
-        title: "Lỗi",
-        description: "Không có ảnh kết quả để tải",
-        variant: "destructive",
-      });
+      toast({ title: "Lỗi", description: "Không có ảnh kết quả để tải", variant: "destructive" });
       setError("Không có ảnh kết quả để tải");
       return;
     }
@@ -559,11 +540,7 @@ export default function ImageInpaintingApp() {
       link.href = inpaintedImage;
       link.click();
       link.remove();
-
-      toast({
-        title: "Đã tải xuống",
-        description: "Đã tải xuống ảnh kết quả thành công",
-      });
+      toast({ title: "Đã tải xuống", description: "Đã tải xuống ảnh kết quả thành công" });
     } else {
       setIsCustomerInfoOpen(true);
     }
@@ -609,9 +586,6 @@ export default function ImageInpaintingApp() {
         throw new Error(errorData.message || "Lỗi khi gửi thông tin khách hàng");
       }
 
-      const data = await response.json();
-      console.log("Customer info saved:", data);
-
       setError(null);
       const link = document.createElement("a");
       link.download = "caslaquartz-result.png";
@@ -619,11 +593,7 @@ export default function ImageInpaintingApp() {
       link.click();
       link.remove();
 
-      toast({
-        title: "Đã tải xuống",
-        description: "Đã tải xuống ảnh kết quả thành công",
-      });
-
+      toast({ title: "Đã tải xuống", description: "Đã tải xuống ảnh kết quả thành công" });
       setIsCustomerInfoOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể lưu thông tin khách hàng");
@@ -639,10 +609,8 @@ export default function ImageInpaintingApp() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
-        <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
-          CaslaQuartz AI
-        </h1>
+      <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col">
+        <h1 className="text-3xl font-bold text-center mb-8 text-blue-800">CaslaQuartz AI</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
           <div className="flex flex-col space-y-4">
@@ -676,26 +644,22 @@ export default function ImageInpaintingApp() {
                         </div>
                       )}
                       {isProcessing && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-500/50">
                           <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
                           <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
-                          <div className="w-64 mt-4">
-                            <Progress value={processingProgress} className="h-2" />
-                          </div>
+                          <Progress value={processingProgress} className="w-64 mt-4" />
                         </div>
                       )}
                     </div>
                   </TabsContent>
                   <TabsContent value="output">
                     <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-                      <canvas ref={outputCanvasRef} />
+                      <canvas ref={outputCanvasRef} className="max-w-full" />
                       {isProcessing && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-500/50">
                           <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
                           <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
-                          <div className="w-64 mt-4">
-                            <Progress value={processingProgress} className="h-2" />
-                          </div>
+                          <Progress value={processingProgress} className="w-64 mt-4" />
                         </div>
                       )}
                     </div>
@@ -707,10 +671,10 @@ export default function ImageInpaintingApp() {
                     <Button onClick={() => fileInputRef.current?.click()} className="bg-gray-200 hover:bg-gray-300 text-blue-900">
                       <Upload className="h-5 w-5" />
                     </Button>
-                    <Button onClick={handleUndo} disabled={pathsHistory.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900 disabled:opacity-50">
+                    <Button onClick={handleUndo} disabled={pathsHistory.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900">
                       <Undo className="h-5 w-5" />
                     </Button>
-                    <Button onClick={handleRedo} disabled={redoStack.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900 disabled:opacity-50">
+                    <Button onClick={handleRedo} disabled={redoStack.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900">
                       <Redo className="h-5 w-5" />
                     </Button>
                   </div>
@@ -757,15 +721,12 @@ export default function ImageInpaintingApp() {
                 <div className="flex flex-col gap-2">
                   <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
                   <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
-                    <canvas ref={outputCanvasRef} />
+                    <canvas ref={outputCanvasRef} className="max-w-full" />
                     {isProcessing && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-500/50">
                         <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
                         <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
-                        <div className="w-64 mt-4">
-                          <Progress value={processingProgress} className="h-2" />
-                          <p className="text-xs text-center mt-1 text-blue-900/70">{processingProgress}%</p>
-                        </div>
+                        <Progress value={processingProgress} className="w-64 mt-4" />
                       </div>
                     )}
                   </div>
@@ -774,7 +735,7 @@ export default function ImageInpaintingApp() {
                       <Button
                         onClick={downloadImage}
                         disabled={!inpaintedImage}
-                        className="bg-gray-200 hover:bg-gray-300 text-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Tải kết quả
@@ -784,15 +745,12 @@ export default function ImageInpaintingApp() {
                       <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-blue-900">Thông Tin Khách Hàng</DialogTitle>
                         <DialogDescription className="text-sm text-gray-600">
-                          Vui lòng điền đầy đủ thông tin dưới đây để tải kết quả xử lý ảnh. Các thông tin này sẽ giúp
-                          chúng tôi phục vụ bạn tốt hơn.
+                          Vui lòng điền đầy đủ thông tin dưới đây để tải kết quả xử lý ảnh.
                         </DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleCustomerInfoSubmit} className="space-y-5">
                         <div className="space-y-2">
-                          <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                            Số Điện Thoại <span className="text-red-500">*</span>
-                          </Label>
+                          <Label htmlFor="phone">Số Điện Thoại <span className="text-red-500">*</span></Label>
                           <Input
                             id="phone"
                             value={customerInfo.phone}
@@ -800,22 +758,10 @@ export default function ImageInpaintingApp() {
                             required
                             type="tel"
                             placeholder="Ví dụ: 0901234567"
-                            className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                              error && !/^\d{9,11}$/.test(customerInfo.phone) ? "border-red-500" : ""
-                            }`}
                           />
-                          <p className="text-xs text-gray-500">
-                            {error && !/^\d{9,11}$/.test(customerInfo.phone) ? (
-                              <span className="text-red-500">Số điện thoại phải từ 9-11 chữ số.</span>
-                            ) : (
-                              "Vui lòng nhập số điện thoại chính xác (9-11 số)."
-                            )}
-                          </p>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                            Địa Chỉ Email <span className="text-red-500">*</span>
-                          </Label>
+                          <Label htmlFor="email">Địa Chỉ Email <span className="text-red-500">*</span></Label>
                           <Input
                             id="email"
                             value={customerInfo.email}
@@ -823,53 +769,21 @@ export default function ImageInpaintingApp() {
                             required
                             type="email"
                             placeholder="Ví dụ: tencuaban@email.com"
-                            className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                              error && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email) ? "border-red-500" : ""
-                            }`}
                           />
-                          <p className="text-xs text-gray-500">
-                            {error && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email) ? (
-                              <span className="text-red-500">Email không hợp lệ.</span>
-                            ) : (
-                              "Email sẽ được sử dụng để liên hệ và gửi thông tin."
-                            )}
-                          </p>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="field" className="text-sm font-medium text-gray-700">
-                            Lĩnh Vực Công Tác <span className="text-red-500">*</span>
-                          </Label>
+                          <Label htmlFor="field">Lĩnh Vực Công Tác <span className="text-red-500">*</span></Label>
                           <Input
                             id="field"
                             value={customerInfo.field}
                             onChange={(e) => setCustomerInfo({ ...customerInfo, field: e.target.value })}
                             required
-                            placeholder="Ví dụ: Thiết kế nội thất, Kiến trúc"
-                            className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                              error && !customerInfo.field.trim() ? "border-red-500" : ""
-                            }`}
+                            placeholder="Ví dụ: Thiết kế nội thất"
                           />
-                          <p className="text-xs text-gray-500">
-                            {error && !customerInfo.field.trim() ? (
-                              <span className="text-red-500">Vui lòng nhập lĩnh vực công tác.</span>
-                            ) : (
-                              "Thông tin này giúp chúng tôi hiểu rõ hơn về nhu cầu của bạn."
-                            )}
-                          </p>
                         </div>
-                        <Button
-                          type="submit"
-                          className="w-full bg-blue-900 hover:bg-blue-800 text-white font-medium py-2 transition-all duration-200"
-                          disabled={isSubmittingInfo}
-                        >
-                          {isSubmittingInfo ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Đang Xử Lý...
-                            </>
-                          ) : (
-                            "Xác Nhận & Tải Kết Quả"
-                          )}
+                        <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-800 text-white" disabled={isSubmittingInfo}>
+                          {isSubmittingInfo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Xác Nhận & Tải Kết Quả
                         </Button>
                       </form>
                     </DialogContent>
@@ -885,11 +799,11 @@ export default function ImageInpaintingApp() {
                         <Upload className="h-4 w-4 mr-2" />
                         Tải ảnh mới
                       </Button>
-                      <Button onClick={handleUndo} disabled={pathsHistory.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900 disabled:opacity-50">
+                      <Button onClick={handleUndo} disabled={pathsHistory.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900">
                         <Undo className="h-4 w-4 mr-2" />
                         Hoàn tác
                       </Button>
-                      <Button onClick={handleRedo} disabled={redoStack.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900 disabled:opacity-50">
+                      <Button onClick={handleRedo} disabled={redoStack.length === 0} className="bg-gray-200 hover:bg-gray-300 text-blue-900">
                         <Redo className="h-4 w-4 mr-2" />
                         Làm lại
                       </Button>
@@ -903,13 +817,9 @@ export default function ImageInpaintingApp() {
                     <Button
                       onClick={handleSubmit}
                       disabled={!image || isProcessing || !selectedProduct || paths.length === 0}
-                      className="bg-blue-900 hover:bg-blue-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-blue-900 hover:bg-blue-800 text-white"
                     >
-                      {isProcessing ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Send className="h-4 w-4 mr-2" />
-                      )}
+                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                       Xử lý ảnh
                     </Button>
                   </div>
@@ -918,8 +828,8 @@ export default function ImageInpaintingApp() {
 
               {error && (
                 <Alert variant="destructive" className="mt-2 p-4">
-                  <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
-                  <AlertDescription className="text-sm">{error}</AlertDescription>
+                  <AlertTitle>Lỗi</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
             </Card>
@@ -937,7 +847,7 @@ export default function ImageInpaintingApp() {
                     placeholder="Tìm kiếm sản phẩm..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 border border-gray-300 rounded-md"
                   />
                   {searchTerm && (
                     <Button
@@ -954,7 +864,7 @@ export default function ImageInpaintingApp() {
                   {Object.entries(productGroups).map(([groupName, products]) => (
                     <div key={groupName} className="mb-4">
                       <div
-                        className="flex items-center justify-between text-sm font-semibold text-blue-900 uppercase tracking-wide border-b border-gray-300 pb-1 cursor-pointer"
+                        className="flex items-center justify-between text-sm font-semibold text-blue-900 uppercase cursor-pointer"
                         onClick={() => toggleGroup(groupName)}
                       >
                         <span>{groupName}</span>
@@ -966,7 +876,7 @@ export default function ImageInpaintingApp() {
                             <Button
                               key={product.name}
                               onClick={() => setSelectedProduct(product.name)}
-                              className={`w-full text-left justify-start py-2 px-4 text-sm transition-all ${
+                              className={`w-full text-left justify-start py-2 px-4 text-sm ${
                                 selectedProduct === product.name
                                   ? "bg-blue-900 text-white hover:bg-blue-800"
                                   : "bg-white text-blue-900 hover:bg-gray-100"
