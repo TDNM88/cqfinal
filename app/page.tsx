@@ -136,52 +136,46 @@ export default function ImageInpaintingApp() {
     };
     initCanvas(inputCanvasRef.current);
     initCanvas(outputCanvasRef.current);
-
+  
     maskCanvasRef.current = document.createElement("canvas");
-
+  
     if (isMaskModalOpen && maskModalCanvasRef.current && resizedImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
+        const aspectRatio = img.width / img.height;
+        let width = img.width;
+        let height = img.height;
+  
+        // Đảm bảo chiều rộng tối thiểu là 1024px
+        if (width < 1024) {
+          width = 1024;
+          height = width / aspectRatio;
+        }
+  
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, width, height);
         redrawCanvas();
       };
       img.onerror = () => setError("Không thể tải ảnh trong modal");
       img.src = resizedImageData;
     }
-
+  
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
   }, [isMaskModalOpen, resizedImageData]);
-
-  const resizeImage = (img: HTMLImageElement, maxWidth: number): Promise<string> => {
-    return new Promise((resolve) => {
-      const aspectRatio = img.width / img.height;
-      const canvasWidth = Math.min(img.width, maxWidth);
-      const canvasHeight = canvasWidth / aspectRatio;
-      const canvas = document.createElement("canvas");
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-      const dataUrl = canvas.toDataURL("image/png");
-      canvas.remove();
-      resolve(dataUrl);
-    });
-  };
-
+  
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+  
     setPaths([]);
     setInpaintedImage(null);
     setError(null);
-
+  
     const reader = new FileReader();
     reader.onload = async (event) => {
       const img = new window.Image();
@@ -195,12 +189,12 @@ export default function ImageInpaintingApp() {
           ctx.drawImage(img, 0, 0);
           setOriginalImageData(tempCanvas.toDataURL("image/png"));
           tempCanvas.remove();
-
-          const maxWidth = 600;
-          const resizedData = await resizeImage(img, maxWidth);
+  
+          const minWidth = 1024; // Đặt chiều rộng tối thiểu là 1024px
+          const resizedData = await resizeImage(img, minWidth);
           setResizedImageData(resizedData);
           setImage(img);
-
+  
           drawImageOnCanvas(resizedData);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
@@ -760,7 +754,7 @@ export default function ImageInpaintingApp() {
                         <Paintbrush className="h-5 w-5" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px]">
+                    <DialogContent className="sm:max-w-[1024px]">
                       <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-blue-900">Vẽ Mask</DialogTitle>
                         <DialogDescription className="text-sm text-gray-600">
