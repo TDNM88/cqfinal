@@ -102,6 +102,7 @@ export default function ImageInpaintingApp() {
   const [brushSize, setBrushSize] = useState(20);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
+  const [eraseMode, setEraseMode] = useState(false); // Chế độ xóa cho touch
   const [maskOpacity] = useState(0.5);
   const [isProcessing, setIsProcessing] = useState(false);
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
@@ -136,9 +137,9 @@ export default function ImageInpaintingApp() {
     };
     initCanvas(inputCanvasRef.current);
     initCanvas(outputCanvasRef.current);
-  
+
     maskCanvasRef.current = document.createElement("canvas");
-  
+
     if (isMaskModalOpen && maskModalCanvasRef.current && resizedImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
@@ -146,13 +147,12 @@ export default function ImageInpaintingApp() {
         const aspectRatio = img.width / img.height;
         let width = img.width;
         let height = img.height;
-  
-        // Đảm bảo chiều rộng tối thiểu là 1024px
+
         if (width < 1024) {
           width = 1024;
           height = width / aspectRatio;
         }
-  
+
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d")!;
@@ -162,20 +162,42 @@ export default function ImageInpaintingApp() {
       img.onerror = () => setError("Không thể tải ảnh trong modal");
       img.src = resizedImageData;
     }
-  
+
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
   }, [isMaskModalOpen, resizedImageData]);
-  
+
+  const resizeImage = (img: HTMLImageElement, minWidth: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const aspectRatio = img.width / img.height;
+      let canvasWidth = img.width;
+      let canvasHeight = img.height;
+
+      if (canvasWidth < minWidth) {
+        canvasWidth = minWidth;
+        canvasHeight = canvasWidth / aspectRatio;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+      const dataUrl = canvas.toDataURL("image/png");
+      canvas.remove();
+      resolve(dataUrl);
+    });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-  
+
     setPaths([]);
     setInpaintedImage(null);
     setError(null);
-  
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       const img = new window.Image();
@@ -189,12 +211,12 @@ export default function ImageInpaintingApp() {
           ctx.drawImage(img, 0, 0);
           setOriginalImageData(tempCanvas.toDataURL("image/png"));
           tempCanvas.remove();
-  
-          const minWidth = 1024; // Đặt chiều rộng tối thiểu là 1024px
+
+          const minWidth = 1024;
           const resizedData = await resizeImage(img, minWidth);
           setResizedImageData(resizedData);
           setImage(img);
-  
+
           drawImageOnCanvas(resizedData);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
@@ -233,90 +255,64 @@ export default function ImageInpaintingApp() {
     e.preventDefault();
     if (!maskModalCanvasRef.current || !maskCanvasRef.current) return;
     setIsDrawing(true);
-    setIsErasing(e.button === 2); // Chuột phải để xóa
-  
+    const isErasingNow = e.button === 2 || eraseMode;
+    setIsErasing(isErasingNow);
+
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-  
+
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     maskCtx.lineCap = "round";
     maskCtx.lineJoin = "round";
-  
-    if (isErasing) {
-      // Xóa các đường mask tại vị trí (x, y)
+
+    if (isErasingNow) {
       eraseMaskAtPosition(x, y);
     } else {
-      // Vẽ mask mới (màu trắng)
       maskCtx.strokeStyle = "white";
       maskCtx.lineWidth = brushSize;
       maskCtx.beginPath();
       maskCtx.moveTo(x, y);
-  
+
       setPaths((prev) => [
         ...prev,
         { points: [{ x, y }], color: "white", width: brushSize },
       ]);
     }
-  
+
     updateMaskPreview();
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !maskModalCanvasRef.current || !maskCanvasRef.current) return;
-  
+
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-  
+
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
-  
+
     if (isErasing) {
-      // Xóa mask tại vị trí con trỏ khi di chuyển
       eraseMaskAtPosition(x, y);
     } else {
-      // Vẽ mask mới
       const currentPath = paths[paths.length - 1];
       const lastPoint = currentPath.points[currentPath.points.length - 1];
-  
+
       maskCtx.strokeStyle = "white";
       maskCtx.lineWidth = brushSize;
       maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
       maskCtx.stroke();
       maskCtx.beginPath();
       maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-  
+
       setPaths((prev) => {
         const newPaths = [...prev];
         newPaths[newPaths.length - 1].points.push({ x, y });
         return newPaths;
       });
     }
-  
-    updateMaskPreview();
-  };
 
-  const eraseMaskAtPosition = (x: number, y: number) => {
-    const eraseRadius = brushSize / 2; // Phạm vi xóa dựa trên kích thước cọ
-  
-    setPaths((prevPaths) => {
-      const updatedPaths = prevPaths.map((path) => {
-        // Chỉ xử lý các đường màu trắng (mask)
-        if (path.color !== "white") return path;
-  
-        const filteredPoints = path.points.filter((point) => {
-          const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
-          return distance > eraseRadius; // Giữ lại điểm ngoài phạm vi xóa
-        });
-  
-        return { ...path, points: filteredPoints };
-      });
-  
-      // Lọc bỏ các path rỗng (không còn điểm nào)
-      return updatedPaths.filter((path) => path.points.length > 0);
-    });
-  
-    redrawCanvas(); // Vẽ lại toàn bộ mask dựa trên paths còn lại
+    updateMaskPreview();
   };
 
   const stopDrawing = () => {
@@ -324,7 +320,7 @@ export default function ImageInpaintingApp() {
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     setIsDrawing(false);
     setIsErasing(false);
-    if (!isErasing) maskCtx.closePath(); // Chỉ đóng path khi vẽ, không phải khi xóa
+    if (!isErasing) maskCtx.closePath();
     updateMaskPreview();
   };
 
@@ -332,6 +328,7 @@ export default function ImageInpaintingApp() {
     e.preventDefault();
     if (!maskModalCanvasRef.current || !maskCanvasRef.current) return;
     setIsDrawing(true);
+    setIsErasing(eraseMode);
 
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
     const touch = e.touches[0];
@@ -341,16 +338,20 @@ export default function ImageInpaintingApp() {
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     maskCtx.lineCap = "round";
     maskCtx.lineJoin = "round";
-    maskCtx.strokeStyle = "white";
-    maskCtx.lineWidth = brushSize;
 
-    maskCtx.beginPath();
-    maskCtx.moveTo(x, y);
+    if (eraseMode) {
+      eraseMaskAtPosition(x, y);
+    } else {
+      maskCtx.strokeStyle = "white";
+      maskCtx.lineWidth = brushSize;
+      maskCtx.beginPath();
+      maskCtx.moveTo(x, y);
 
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: "white", width: brushSize },
-    ]);
+      setPaths((prev) => [
+        ...prev,
+        { points: [{ x, y }], color: "white", width: brushSize },
+      ]);
+    }
 
     updateMaskPreview();
   };
@@ -364,19 +365,26 @@ export default function ImageInpaintingApp() {
     const y = touch.clientY - rect.top;
 
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
-    const currentPath = paths[paths.length - 1];
-    const lastPoint = currentPath.points[currentPath.points.length - 1];
 
-    maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-    maskCtx.stroke();
-    maskCtx.beginPath();
-    maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
+    if (eraseMode) {
+      eraseMaskAtPosition(x, y);
+    } else {
+      const currentPath = paths[paths.length - 1];
+      const lastPoint = currentPath.points[currentPath.points.length - 1];
 
-    setPaths((prev) => {
-      const newPaths = [...prev];
-      newPaths[newPaths.length - 1].points.push({ x, y });
-      return newPaths;
-    });
+      maskCtx.strokeStyle = "white";
+      maskCtx.lineWidth = brushSize;
+      maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
+      maskCtx.stroke();
+      maskCtx.beginPath();
+      maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
+
+      setPaths((prev) => {
+        const newPaths = [...prev];
+        newPaths[newPaths.length - 1].points.push({ x, y });
+        return newPaths;
+      });
+    }
 
     updateMaskPreview();
   };
@@ -385,27 +393,49 @@ export default function ImageInpaintingApp() {
     if (!maskCanvasRef.current) return;
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     setIsDrawing(false);
-    maskCtx.closePath();
+    setIsErasing(false);
+    if (!eraseMode) maskCtx.closePath();
     updateMaskPreview();
+  };
+
+  const eraseMaskAtPosition = (x: number, y: number) => {
+    const eraseRadius = brushSize / 2;
+
+    setPaths((prevPaths) => {
+      const updatedPaths = prevPaths.map((path) => {
+        if (path.color !== "white") return path;
+
+        const filteredPoints = path.points.filter((point) => {
+          const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
+          return distance > eraseRadius;
+        });
+
+        return { ...path, points: filteredPoints };
+      });
+
+      return updatedPaths.filter((path) => path.points.length > 0);
+    });
+
+    redrawCanvas();
   };
 
   const redrawCanvas = () => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
-  
+
     const maskCtx = maskCanvas.getContext("2d")!;
     maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-  
+
     maskCtx.lineCap = "round";
     maskCtx.lineJoin = "round";
-  
+
     paths.forEach((path) => {
       if (path.points.length === 0) return;
-  
+
       maskCtx.beginPath();
       maskCtx.strokeStyle = path.color;
       maskCtx.lineWidth = path.width;
-  
+
       if (path.points.length === 1) {
         const point = path.points[0];
         maskCtx.arc(point.x, point.y, path.width / 2, 0, Math.PI * 2);
@@ -421,9 +451,9 @@ export default function ImageInpaintingApp() {
         maskCtx.stroke();
       }
     });
-  
+
     updateMaskPreview();
-};
+  };
 
   const updateMaskPreview = () => {
     const inputCanvas = inputCanvasRef.current;
@@ -796,7 +826,7 @@ export default function ImageInpaintingApp() {
                       <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-blue-900">Vẽ Mask</DialogTitle>
                         <DialogDescription className="text-sm text-gray-600">
-                          Dùng chuột trái để vẽ mask (màu trắng), chuột phải để tẩy (màu đen). Nhấp để xóa đường vẽ.
+                          Dùng chuột trái để vẽ mask (màu trắng), chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa bên dưới.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
@@ -815,7 +845,7 @@ export default function ImageInpaintingApp() {
                         />
                       </div>
                       <div className="flex justify-between mt-4">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           <label className="text-sm font-medium text-blue-900">
                             Kích thước: {brushSize}px
                           </label>
@@ -827,6 +857,12 @@ export default function ImageInpaintingApp() {
                             onValueChange={(value) => setBrushSize(value[0])}
                             className="w-32"
                           />
+                          <Button
+                            onClick={() => setEraseMode(!eraseMode)}
+                            className={`ml-4 ${eraseMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-900 hover:bg-blue-800"} text-white`}
+                          >
+                            {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
+                          </Button>
                         </div>
                         <Button onClick={() => setIsMaskModalOpen(false)} className="bg-blue-900 hover:bg-blue-800 text-white">
                           Hoàn tất
@@ -1017,11 +1053,11 @@ export default function ImageInpaintingApp() {
                           Vẽ Mask
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[600px]">
+                      <DialogContent className="sm:max-w-[1024px]">
                         <DialogHeader>
                           <DialogTitle className="text-xl font-semibold text-blue-900">Vẽ Mask</DialogTitle>
                           <DialogDescription className="text-sm text-gray-600">
-                            Dùng chuột trái để vẽ mask (màu trắng), chuột phải để tẩy (màu đen). Nhấp để xóa đường vẽ.
+                            Dùng chuột trái để vẽ mask (màu trắng), chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa bên dưới.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
@@ -1040,7 +1076,7 @@ export default function ImageInpaintingApp() {
                           />
                         </div>
                         <div className="flex justify-between mt-4">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-center">
                             <label className="text-sm font-medium text-blue-900">
                               Kích thước: {brushSize}px
                             </label>
@@ -1052,6 +1088,12 @@ export default function ImageInpaintingApp() {
                               onValueChange={(value) => setBrushSize(value[0])}
                               className="w-32"
                             />
+                            <Button
+                              onClick={() => setEraseMode(!eraseMode)}
+                              className={`ml-4 ${eraseMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-900 hover:bg-blue-800"} text-white`}
+                            >
+                              {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
+                            </Button>
                           </div>
                           <Button onClick={() => setIsMaskModalOpen(false)} className="bg-blue-900 hover:bg-blue-800 text-white">
                             Hoàn tất
