@@ -76,6 +76,7 @@ const productGroups = {
     { name: "C5366 - Skiron", quote: "Skiron tái hiện hình ảnh những con sóng biển trên nền đá, với các đường vân xanh xếp lớp cùng những mảng trắng và xám, phù hợp cho không gian nội thất hiện đại." },
   ],
 };
+
 const products = Object.fromEntries(
   Object.values(productGroups)
     .flat()
@@ -89,7 +90,7 @@ export default function ImageInpaintingApp() {
   const [brushSize, setBrushSize] = useState(20);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
-  const [eraseMode, setEraseMode] = useState(false);
+    const [eraseMode, setEraseMode] = useState(false);
   const [maskOpacity] = useState(0.5);
   const [isProcessing, setIsProcessing] = useState(false);
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
@@ -107,19 +108,42 @@ export default function ImageInpaintingApp() {
   const { processInpainting } = useInpainting();
 
   // Khởi tạo canvas với placeholder
-    useEffect(() => {
+  useEffect(() => {
+    const initCanvasWithPlaceholder = (canvas: HTMLCanvasElement | null) => {
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const placeholder = new Image();
+      placeholder.src = "/logo2048.jpg";
+      placeholder.onload = () => {
+        canvas.width = placeholder.width;
+        canvas.height = placeholder.height;
+        ctx.drawImage(placeholder, 0, 0, canvas.width, canvas.height);
+      };
+      placeholder.onerror = () => {
+        ctx.fillStyle = "#F3F4F6";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      };
+    };
+
+    initCanvasWithPlaceholder(inputCanvasRef.current);
+    initCanvasWithPlaceholder(outputCanvasRef.current);
+
+    maskCanvasRef.current = document.createElement("canvas");
+
     if (isMaskModalOpen && maskModalCanvasRef.current && originalImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
-        // Calculate display size based on the original ratio
-        const maxDisplayWidth = window.innerWidth * 0.95; // 95% of screen width
-        const maxDisplayHeight = window.innerHeight * 0.95; // 95% of screen height
-  
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        const maxDisplayWidth = window.innerWidth * 0.95;
+        const maxDisplayHeight = window.innerHeight * 0.95;
         let displayWidth = img.width;
         let displayHeight = img.height;
-  
-        // Adjust size if the image is too large
+
         if (displayWidth > maxDisplayWidth) {
           displayWidth = maxDisplayWidth;
           displayHeight = displayWidth * (img.height / img.width);
@@ -128,23 +152,21 @@ export default function ImageInpaintingApp() {
           displayHeight = maxDisplayHeight;
           displayWidth = displayHeight * (img.width / img.height);
         }
-  
-        // Update canvas size
-        canvas.width = img.width;
-        canvas.height = img.height;
-  
-        // Display image with adjusted size
-        const ctx = canvas.getContext("2d")!;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-  
-        // Update CSS to display canvas at the correct ratio
+
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
+
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        redrawCanvas();
       };
       img.onerror = () => setError("Không thể tải ảnh trong modal");
       img.src = originalImageData;
     }
+
+    return () => {
+      if (maskCanvasRef.current) maskCanvasRef.current.remove();
+    };
   }, [isMaskModalOpen, originalImageData]);
 
   // Resize ảnh
