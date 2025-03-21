@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -466,7 +464,7 @@ export default function ImageInpaintingApp() {
     img.src = originalImageData; // Dùng ảnh gốc thay vì resizedImageData
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
@@ -492,8 +490,8 @@ export default function ImageInpaintingApp() {
   
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-  
-      const resultUrl = await processInpainting(finalImageData, productImageBase64, finalMaskData);
+
+  const resultUrl = await processInpainting(finalImageData, productImageBase64, finalMaskData);
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
@@ -515,6 +513,7 @@ export default function ImageInpaintingApp() {
       setIsProcessing(false);
     }
   };
+  
   const getCombinedImage = async (): Promise<string> => {
     if (!image || !maskCanvasRef.current) throw new Error("Không tìm thấy ảnh hoặc mask");
     const maskCanvasBW = document.createElement("canvas");
@@ -588,27 +587,13 @@ export default function ImageInpaintingApp() {
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            <div className="lg:hidden">
+            <div>
               <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
                 <canvas ref={inputCanvasRef} className="max-w-full max-h-full object-contain" />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
                     <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Tải ảnh lên
-                    </Button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageUpload}
-                      accept="image/*"
-                      className="hidden"
-                    />
                   </div>
                 )}
                 {isProcessing && (
@@ -617,104 +602,102 @@ export default function ImageInpaintingApp() {
                   </div>
                 )}
               </div>
-              {image && (
-                <div className="flex justify-center gap-2 mt-4">
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <Upload className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    onClick={handleClearMask}
-                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <RefreshCw className="h-5 w-5" />
-                  </Button>
-                  <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
-                        <Paintbrush className="h-5 w-5" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-hidden p-6 bg-white rounded-lg">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-semibold text-blue-900">
-                          Vẽ Mask
-                        </DialogTitle>
-                        <DialogDescription className="text-sm text-gray-600">
-                          Dùng chuột trái để vẽ mask, chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="flex flex-col gap-6">
-                        <div className="flex items-center justify-center">
-                          <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
-                            <canvas
-                              ref={maskModalCanvasRef}
-                              className="max-w-full cursor-crosshair"
-                              onMouseDown={startDrawing}
-                              onMouseMove={draw}
-                              onMouseUp={stopDrawing}
-                              onMouseLeave={stopDrawing}
-                              onContextMenu={(e) => e.preventDefault()}
-                              onTouchStart={startDrawingTouch}
-                              onTouchMove={drawTouch}
-                              onTouchEnd={stopDrawingTouch}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center flex-col md:flex-row gap-3">
-                          <div className="flex items-center gap-3">
-                            <label className="text-sm font-medium text-blue-900">
-                              Kích thước: {brushSize}px
-                            </label>
-                            <Slider
-                              value={[brushSize]}
-                              min={1}
-                              max={50}
-                              step={1}
-                              onValueChange={(value) => setBrushSize(value[0])}
-                              className="w-32"
-                            />
-                            <Button
-                              onClick={() => setEraseMode(!eraseMode)}
-                              className={`${
-                                eraseMode
-                                  ? "bg-red-500 hover:bg-red-600"
-                                  : "bg-blue-900 hover:bg-blue-800"
-                              } text-white`}
-                            >
-                              {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
-                            </Button>
-                          </div>
-                          <Button
-                            onClick={() => setIsMaskModalOpen(false)}
-                            className="bg-blue-900 hover:bg-blue-800 text-white"
-                          >
-                            Xác nhận
-                          </Button>
+              <div className="flex justify-center gap-2 mt-4">
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                >
+                  <Upload className="h-5 w-5" />
+                </Button>
+                <Button
+                  onClick={handleClearMask}
+                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                </Button>
+                <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
+                      <Paintbrush className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-hidden p-6 bg-white rounded-lg">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-semibold text-blue-900">
+                        Vẽ Mask
+                      </DialogTitle>
+                      <DialogDescription className="text-sm text-gray-600">
+                        Dùng chuột trái để vẽ mask, chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-6">
+                      <div className="flex items-center justify-center">
+                        <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
+                          <canvas
+                            ref={maskModalCanvasRef}
+                            className="max-w-full cursor-crosshair"
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onMouseLeave={stopDrawing}
+                            onContextMenu={(e) => e.preventDefault()}
+                            onTouchStart={startDrawingTouch}
+                            onTouchMove={drawTouch}
+                            onTouchEnd={stopDrawingTouch}
+                          />
                         </div>
                       </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    onClick={() => {
-                      const canvas = inputCanvasRef.current;
-                      if (canvas) {
-                        const url = canvas.toDataURL("image/png");
-                        const link = document.createElement("a");
-                        link.href = url;
-                        link.download = "canvas.png";
-                        link.click();
-                        link.remove();
-                      }
-                    }}
-                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <Save className="h-5 w-5" />
-                  </Button>
-                </div>
-              )}
+                      <div className="flex justify-between items-center flex-col md:flex-row gap-3">
+                        <div className="flex items-center gap-3">
+                          <label className="text-sm font-medium text-blue-900">
+                            Kích thước: {brushSize}px
+                          </label>
+                          <Slider
+                            value={[brushSize]}
+                            min={1}
+                            max={50}
+                            step={1}
+                            onValueChange={(value) => setBrushSize(value[0])}
+                            className="w-32"
+                          />
+                          <Button
+                            onClick={() => setEraseMode(!eraseMode)}
+                            className={`${
+                              eraseMode
+                                ? "bg-red-500 hover:bg-red-600"
+                                : "bg-blue-900 hover:bg-blue-800"
+                            } text-white`}
+                          >
+                            {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
+                          </Button>
+                        </div>
+                        <Button
+                          onClick={() => setIsMaskModalOpen(false)}
+                          className="bg-blue-900 hover:bg-blue-800 text-white"
+                        >
+                          Xác nhận
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Button
+                  onClick={() => {
+                    const canvas = inputCanvasRef.current;
+                    if (canvas) {
+                      const url = canvas.toDataURL("image/png");
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = "canvas.png";
+                      link.click();
+                      link.remove();
+                    }
+                  }}
+                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                >
+                  <Save className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
 
             <div className="hidden lg:grid grid-cols-2 gap-4">
@@ -725,20 +708,6 @@ export default function ImageInpaintingApp() {
                   {!image && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
-                      <Button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Tải ảnh lên
-                      </Button>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                        className="hidden"
-                      />
                     </div>
                   )}
                 </div>
