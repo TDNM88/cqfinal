@@ -217,7 +217,7 @@ export default function ImageInpaintingApp() {
           setResizedImageData(resizedData);
           setImage(img);
 
-          drawImageOnCanvas(resizedData);
+          drawImageOnCanvas(resizedData); // Gọi hàm vẽ ảnh
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
         }
@@ -236,6 +236,7 @@ export default function ImageInpaintingApp() {
 
     const img = new Image();
     img.onload = () => {
+      // Đảm bảo kích thước canvas khớp với ảnh
       inputCanvas.width = img.width;
       inputCanvas.height = img.height;
       maskCanvas.width = img.width;
@@ -243,11 +244,16 @@ export default function ImageInpaintingApp() {
       if (outputCanvas) {
         outputCanvas.width = img.width;
         outputCanvas.height = img.height;
+        const outputCtx = outputCanvas.getContext("2d")!;
+        outputCtx.fillStyle = "#F3F4F6";
+        outputCtx.fillRect(0, 0, img.width, img.height);
       }
 
       const inputCtx = inputCanvas.getContext("2d")!;
-      inputCtx.drawImage(img, 0, 0);
+      inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height); // Xóa canvas trước khi vẽ
+      inputCtx.drawImage(img, 0, 0, img.width, img.height); // Vẽ ảnh lên canvas
     };
+    img.onerror = () => setError("Không thể vẽ ảnh lên canvas");
     img.src = resizedData;
   };
 
@@ -772,9 +778,10 @@ export default function ImageInpaintingApp() {
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
+            {/* Phần mobile */}
             <div className="lg:hidden">
-              <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-                <canvas ref={inputCanvasRef} className="max-w-full" />
+              <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
+                <canvas ref={inputCanvasRef} className="max-w-full max-h-full object-contain" />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
@@ -821,7 +828,6 @@ export default function ImageInpaintingApp() {
                       <Button
                         className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                         title="Vẽ Mask"
-                        onClick={() => console.log("Opening mask modal")}
                       >
                         <Paintbrush className="h-5 w-5" />
                       </Button>
@@ -833,7 +839,7 @@ export default function ImageInpaintingApp() {
                           Dùng chuột trái để vẽ mask (màu trắng), chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa bên dưới.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
+                      <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px] overflow-auto">
                         <canvas
                           ref={maskModalCanvasRef}
                           className="max-w-full cursor-crosshair"
@@ -884,11 +890,12 @@ export default function ImageInpaintingApp() {
               )}
             </div>
 
+            {/* Phần desktop */}
             <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Xem Mask</h2>
-                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-                  <canvas ref={inputCanvasRef} className="max-w-full" />
+                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
+                  <canvas ref={inputCanvasRef} className="max-w-full max-h-full object-contain" />
                   {!image && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
@@ -934,8 +941,8 @@ export default function ImageInpaintingApp() {
 
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
-                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-                  <canvas ref={outputCanvasRef} />
+                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
+                  <canvas ref={outputCanvasRef} className="max-w-full max-h-full object-contain" />
                   {isProcessing && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
                       <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
@@ -1027,6 +1034,7 @@ export default function ImageInpaintingApp() {
               </div>
             </div>
 
+            {/* Nút xử lý trên desktop */}
             <div className="hidden lg:block">
               {image && (
                 <div className="flex flex-col gap-4">
@@ -1055,7 +1063,6 @@ export default function ImageInpaintingApp() {
                         <Button
                           className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                           title="Vẽ Mask"
-                          onClick={() => console.log("Opening mask modal")}
                         >
                           <Paintbrush className="h-4 w-4 mr-2" />
                           Vẽ Mask
@@ -1068,7 +1075,7 @@ export default function ImageInpaintingApp() {
                             Dùng chuột trái để vẽ mask (màu trắng), chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa bên dưới.
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px]">
+                        <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px] overflow-auto">
                           <canvas
                             ref={maskModalCanvasRef}
                             className="max-w-full cursor-crosshair"
@@ -1134,6 +1141,7 @@ export default function ImageInpaintingApp() {
             )}
           </Card>
 
+          {/* Menu sản phẩm trên mobile */}
           <div className="lg:hidden">
             <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md">
               <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
@@ -1175,6 +1183,7 @@ export default function ImageInpaintingApp() {
           </div>
         </div>
 
+        {/* Menu sản phẩm trên desktop */}
         <div className="hidden lg:flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
