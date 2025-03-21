@@ -34,7 +34,6 @@ const products = Object.fromEntries(
 export default function ImageInpaintingApp() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [originalImageData, setOriginalImageData] = useState<string>("");
-  const [resizedImageData, setResizedImageData] = useState<string>("");
   const [brushSize, setBrushSize] = useState(20);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,28 +64,6 @@ export default function ImageInpaintingApp() {
     };
   };
 
-  const resizeImage = (img: HTMLImageElement, targetWidth = 1152): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const minSize = 300;
-      if (img.width < minSize || img.height < minSize) {
-        reject(new Error("Ảnh quá nhỏ, tối thiểu 300px mỗi chiều"));
-        return;
-      }
-      const aspectRatio = img.width / img.height;
-      let newWidth = Math.min(img.width, targetWidth);
-      let newHeight = newWidth / aspectRatio;
-      const canvas = document.createElement("canvas");
-      canvas.width = newWidth;
-      canvas.height = newHeight;
-      const ctx = canvas.getContext("2d")!;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, 0, 0, newWidth, newHeight);
-      const dataUrl = canvas.toDataURL("image/png");
-      canvas.remove();
-      resolve(dataUrl);
-    });
-  };
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -100,9 +77,7 @@ export default function ImageInpaintingApp() {
         try {
           setImage(img);
           setOriginalImageData(event.target?.result as string);
-          const resizedData = await resizeImage(img);
-          setResizedImageData(resizedData);
-          setIsMaskModalOpen(true); // Mở modal sau khi có ảnh resize
+          setIsMaskModalOpen(true); // Mở modal ngay sau khi có ảnh gốc
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
           drawPlaceholder(mainCanvasRef.current);
@@ -115,7 +90,7 @@ export default function ImageInpaintingApp() {
   };
 
   const initializeFabricCanvas = () => {
-    if (!modalCanvasRef.current || !resizedImageData) return;
+    if (!modalCanvasRef.current || !originalImageData) return;
 
     // Tạo Fabric Canvas
     const canvas = new fabric.Canvas(modalCanvasRef.current, {
@@ -123,9 +98,9 @@ export default function ImageInpaintingApp() {
     });
     fabricCanvasRef.current = canvas;
 
-    // Tải ảnh vào canvas
+    // Tải ảnh gốc vào canvas
     const img = new Image();
-    img.src = resizedImageData;
+    img.src = originalImageData;
     img.onload = () => {
       // Điều chỉnh kích thước canvas dựa trên ảnh và màn hình
       const maxWidth = window.innerWidth * 0.8;
@@ -145,7 +120,7 @@ export default function ImageInpaintingApp() {
       canvas.setWidth(width);
       canvas.setHeight(height);
 
-      fabric.Image.fromURL(resizedImageData, (fabricImg) => {
+      fabric.Image.fromURL(originalImageData, (fabricImg) => {
         fabricImg.scaleToWidth(width);
         fabricImg.scaleToHeight(height);
         canvas.setBackgroundImage(fabricImg, canvas.renderAll.bind(canvas));
@@ -162,7 +137,7 @@ export default function ImageInpaintingApp() {
   };
 
   useEffect(() => {
-    if (isMaskModalOpen && modalCanvasRef.current && resizedImageData) {
+    if (isMaskModalOpen && modalCanvasRef.current && originalImageData) {
       initializeFabricCanvas();
     }
 
@@ -172,7 +147,7 @@ export default function ImageInpaintingApp() {
         fabricCanvasRef.current = null;
       }
     };
-  }, [isMaskModalOpen, resizedImageData, brushSize]);
+  }, [isMaskModalOpen, originalImageData, brushSize]);
 
   const drawImageWithMask = () => {
     const canvas = mainCanvasRef.current;
@@ -197,7 +172,7 @@ export default function ImageInpaintingApp() {
       };
       maskImg.src = maskData;
     };
-    img.src = resizedImageData;
+    img.src = originalImageData;
   };
 
   const getMaskImage = () => {
@@ -290,7 +265,7 @@ export default function ImageInpaintingApp() {
     try {
       const maskImage = getMaskImage();
       const productImageBase64 = await convertImageToBase64(products[selectedProduct]);
-      const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage!);
+      const resultUrl = await processInpainting(originalImageData, productImageBase64, maskImage!);
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
 
@@ -313,7 +288,6 @@ export default function ImageInpaintingApp() {
   const handleReset = () => {
     setImage(null);
     setOriginalImageData("");
-    setResizedImageData("");
     setError(null);
     setSelectedProduct(null);
     if (fabricCanvasRef.current) {
@@ -368,7 +342,7 @@ export default function ImageInpaintingApp() {
                       if (fabricCanvasRef.current) {
                         fabricCanvasRef.current.clear();
                         const img = new Image();
-                        img.src = resizedImageData;
+                        img.src = originalImageData;
                         img.onload = () => {
                           const maxWidth = window.innerWidth * 0.8;
                           const maxHeight = window.innerHeight * 0.6;
@@ -387,7 +361,7 @@ export default function ImageInpaintingApp() {
                           fabricCanvasRef.current!.setWidth(width);
                           fabricCanvasRef.current!.setHeight(height);
 
-                          fabric.Image.fromURL(resizedImageData, (fabricImg) => {
+                          fabric.Image.fromURL(originalImageData, (fabricImg) => {
                             fabricImg.scaleToWidth(width);
                             fabricImg.scaleToHeight(height);
                             fabricCanvasRef.current!.setBackgroundImage(
