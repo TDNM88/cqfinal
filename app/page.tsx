@@ -114,47 +114,64 @@ export default function ImageInpaintingApp() {
     reader.readAsDataURL(file);
   };
 
-  useEffect(() => {
-    if (isMaskModalOpen && modalCanvasRef.current && resizedImageData) {
-      // Khởi tạo Fabric Canvas khi modal mở
-      const canvas = new fabric.Canvas(modalCanvasRef.current, {
-        isDrawingMode: true,
-        width: window.innerWidth * 0.8, // 80% chiều rộng màn hình
-        height: window.innerHeight * 0.6, // 60% chiều cao màn hình
-      });
-      fabricCanvasRef.current = canvas;
+  const initializeFabricCanvas = () => {
+    if (!modalCanvasRef.current || !resizedImageData) return;
 
-      fabric.Image.fromURL(resizedImageData, (img) => {
-        const scaleX = canvas.width! / img.width!;
-        const scaleY = canvas.height! / img.height!;
-        const scale = Math.min(scaleX, scaleY); // Scale giữ tỷ lệ
-        img.scale(scale);
-        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-          scaleX: scale,
-          scaleY: scale,
-        });
+    // Tạo Fabric Canvas
+    const canvas = new fabric.Canvas(modalCanvasRef.current, {
+      isDrawingMode: true,
+    });
+    fabricCanvasRef.current = canvas;
+
+    // Tải ảnh vào canvas
+    const img = new Image();
+    img.src = resizedImageData;
+    img.onload = () => {
+      // Điều chỉnh kích thước canvas dựa trên ảnh và màn hình
+      const maxWidth = window.innerWidth * 0.8;
+      const maxHeight = window.innerHeight * 0.6;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        width = maxWidth;
+        height = (img.height / img.width) * width;
+      }
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = (img.width / img.height) * height;
+      }
+
+      canvas.setWidth(width);
+      canvas.setHeight(height);
+
+      fabric.Image.fromURL(resizedImageData, (fabricImg) => {
+        fabricImg.scaleToWidth(width);
+        fabricImg.scaleToHeight(height);
+        canvas.setBackgroundImage(fabricImg, canvas.renderAll.bind(canvas));
       }, { crossOrigin: "anonymous" });
 
+      // Cài đặt brush
       canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
       canvas.freeDrawingBrush.width = brushSize;
       canvas.freeDrawingBrush.color = "white";
+    };
+    img.onerror = () => {
+      setError("Không thể tải ảnh vào canvas trong modal");
+    };
+  };
 
-      // Cập nhật brush size khi thay đổi
-      const updateBrushSize = () => {
-        if (fabricCanvasRef.current) {
-          fabricCanvasRef.current.freeDrawingBrush.width = brushSize;
-        }
-      };
-      updateBrushSize();
-
-      // Dọn dẹp khi modal đóng
-      return () => {
-        if (fabricCanvasRef.current) {
-          fabricCanvasRef.current.dispose();
-          fabricCanvasRef.current = null;
-        }
-      };
+  useEffect(() => {
+    if (isMaskModalOpen && modalCanvasRef.current && resizedImageData) {
+      initializeFabricCanvas();
     }
+
+    return () => {
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.dispose();
+        fabricCanvasRef.current = null;
+      }
+    };
   }, [isMaskModalOpen, resizedImageData, brushSize]);
 
   const drawImageWithMask = () => {
@@ -350,17 +367,35 @@ export default function ImageInpaintingApp() {
                     onClick={() => {
                       if (fabricCanvasRef.current) {
                         fabricCanvasRef.current.clear();
-                        fabric.Image.fromURL(resizedImageData, (img) => {
-                          const scaleX = fabricCanvasRef.current!.width! / img.width!;
-                          const scaleY = fabricCanvasRef.current!.height! / img.height!;
-                          const scale = Math.min(scaleX, scaleY);
-                          img.scale(scale);
-                          fabricCanvasRef.current!.setBackgroundImage(
-                            img,
-                            fabricCanvasRef.current!.renderAll.bind(fabricCanvasRef.current),
-                            { scaleX: scale, scaleY: scale }
-                          );
-                        });
+                        const img = new Image();
+                        img.src = resizedImageData;
+                        img.onload = () => {
+                          const maxWidth = window.innerWidth * 0.8;
+                          const maxHeight = window.innerHeight * 0.6;
+                          let width = img.width;
+                          let height = img.height;
+
+                          if (width > maxWidth) {
+                            width = maxWidth;
+                            height = (img.height / img.width) * width;
+                          }
+                          if (height > maxHeight) {
+                            height = maxHeight;
+                            width = (img.width / img.height) * height;
+                          }
+
+                          fabricCanvasRef.current!.setWidth(width);
+                          fabricCanvasRef.current!.setHeight(height);
+
+                          fabric.Image.fromURL(resizedImageData, (fabricImg) => {
+                            fabricImg.scaleToWidth(width);
+                            fabricImg.scaleToHeight(height);
+                            fabricCanvasRef.current!.setBackgroundImage(
+                              fabricImg,
+                              fabricCanvasRef.current!.renderAll.bind(fabricCanvasRef.current)
+                            );
+                          }, { crossOrigin: "anonymous" });
+                        };
                         drawImageWithMask();
                       }
                     }}
