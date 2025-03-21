@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import nodemailer from "nodemailer";
 
-// Đường dẫn đến file log (tạo trong thư mục dự án)
-const logFilePath = path.join(process.cwd(), "logs", "customer-info.log");
+// Cấu hình transporter cho Nodemailer
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com", // Hoặc SMTP server của bạn
+  port: 587,
+  secure: false, // true cho 465, false cho các port khác
+  auth: {
+    user: process.env.EMAIL_USER, // Email của bạn (VD: your-email@gmail.com)
+    pass: process.env.EMAIL_PASS, // Mật khẩu ứng dụng (App Password nếu dùng Gmail)
+  },
+});
 
 export async function POST(request: Request) {
   const { phone, email, field, timestamp } = await request.json();
@@ -14,23 +21,36 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Đảm bảo thư mục logs tồn tại
-    const logDir = path.dirname(logFilePath);
-    await fs.mkdir(logDir, { recursive: true });
+    // Tạo nội dung email
+    const mailOptions = {
+      from: process.env.EMAIL_USER, // Email gửi
+      to: "vlxd@caslagroup.com", // Email nhận (thay bằng email của bạn)
+      subject: "Thông Tin Khách Hàng từ CaslaQuartz AI",
+      text: `
+        Thời gian: ${timestamp}
+        Số điện thoại: ${phone}
+        Email: ${email}
+        Lĩnh vực công tác: ${field}
+      `,
+      html: `
+        <h2>Thông Tin Khách Hàng</h2>
+        <p><strong>Thời gian:</strong> ${timestamp}</p>
+        <p><strong>Số điện thoại:</strong> ${phone}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Lĩnh vực công tác:</strong> ${field}</p>
+      `,
+    };
 
-    // Tạo nội dung log
-    const logEntry = `${timestamp} - Phone: ${phone}, Email: ${email}, Field: ${field}\n`;
-    
-    // Ghi vào file log (append mode)
-    await fs.appendFile(logFilePath, logEntry, "utf8");
+    // Gửi email
+    await transporter.sendMail(mailOptions);
 
     // Phản hồi thành công
     return NextResponse.json(
-      { message: "Customer info saved to log successfully", data: { phone, email, field, timestamp } },
+      { message: "Customer info sent via email successfully", data: { phone, email, field, timestamp } },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error saving customer info to log:", error);
+    console.error("Error sending customer info via email:", error);
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
