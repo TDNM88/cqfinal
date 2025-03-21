@@ -153,11 +153,13 @@ export default function ImageInpaintingApp() {
           height = width / aspectRatio;
         }
   
+        // Set kích thước logic
         canvas.width = width;
         canvas.height = height;
-        // Đồng bộ kích thước hiển thị
+        // Set kích thước hiển thị
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
+  
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, width, height);
         redrawCanvas();
@@ -1071,14 +1073,14 @@ export default function ImageInpaintingApp() {
                           Vẽ Mask
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[1024px]">
+                      <DialogContent className="sm:max-w-[1024px] max-h-[80vh] overflow-auto">
                         <DialogHeader>
                           <DialogTitle className="text-xl font-semibold text-blue-900">Vẽ Mask</DialogTitle>
                           <DialogDescription className="text-sm text-gray-600">
                             Dùng chuột trái để vẽ mask (màu trắng), chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa bên dưới.
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[400px] overflow-auto">
+                        <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 overflow-auto">
                           <canvas
                             ref={maskModalCanvasRef}
                             className="max-w-full cursor-crosshair"
