@@ -826,13 +826,33 @@ export default function ImageInpaintingApp() {
   const handleCustomerInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmittingInfo(true);
-
+  
+    // Regex cho validation
+    const phoneRegex = /^\d{9,11}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+    // Kiểm tra từng trường
+    if (!phoneRegex.test(customerInfo.phone)) {
+      setError("Số điện thoại phải từ 9-11 chữ số.");
+      setIsSubmittingInfo(false);
+      return;
+    }
+    if (!emailRegex.test(customerInfo.email)) {
+      setError("Email không hợp lệ.");
+      setIsSubmittingInfo(false);
+      return;
+    }
+    if (!customerInfo.field.trim()) {
+      setError("Vui lòng nhập lĩnh vực công tác.");
+      setIsSubmittingInfo(false);
+      return;
+    }
+  
+    // Nếu tất cả hợp lệ, gửi API
     try {
       const response = await fetch("/api/customer-info", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: customerInfo.phone,
           email: customerInfo.email,
@@ -840,19 +860,20 @@ export default function ImageInpaintingApp() {
           timestamp: new Date().toISOString(),
         }),
       });
-
+  
       if (!response.ok) {
-        throw new Error("Lỗi khi gửi thông tin khách hàng");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Lỗi khi gửi thông tin khách hàng");
       }
-
+  
       const data = await response.json();
-      console.log("Customer info saved:", data);
-
-      // Sau khi lưu thành công, tiến hành tải ảnh
+      console.log("Customer info saved to log:", data);
+  
+      // Reset error và tải ảnh
+      setError(null);
       downloadImage();
       setIsCustomerInfoOpen(false);
     } catch (err) {
-      console.error("Error saving customer info:", err);
       setError(err instanceof Error ? err.message : "Không thể lưu thông tin khách hàng");
     } finally {
       setIsSubmittingInfo(false);
@@ -1264,75 +1285,93 @@ export default function ImageInpaintingApp() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold text-blue-900">
-                      Thông Tin Khách Hàng
-                    </DialogTitle>
-                    <DialogDescription className="text-sm text-gray-600">
-                      Vui lòng điền đầy đủ thông tin dưới đây để tải kết quả xử lý ảnh. Các thông tin này sẽ giúp chúng tôi phục vụ bạn tốt hơn.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCustomerInfoSubmit} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                        Số Điện Thoại <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="phone"
-                        value={customerInfo.phone}
-                        onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                        required
-                        type="tel"
-                        placeholder="Ví dụ: 0901234567"
-                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                      <p className="text-xs text-gray-500">Vui lòng nhập số điện thoại chính xác (9-11 số).</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                        Địa Chỉ Email <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="email"
-                        value={customerInfo.email}
-                        onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                        required
-                        type="email"
-                        placeholder="Ví dụ: tenkhachhang@email.com"
-                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                      <p className="text-xs text-gray-500">Email sẽ được sử dụng để liên hệ và gửi thông tin.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="field" className="text-sm font-medium text-gray-700">
-                        Lĩnh Vực Công Tác <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="field"
-                        value={customerInfo.field}
-                        onChange={(e) => setCustomerInfo({ ...customerInfo, field: e.target.value })}
-                        required
-                        placeholder="Ví dụ: Thiết kế nội thất, Kiến trúc"
-                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                      <p className="text-xs text-gray-500">Thông tin này giúp chúng tôi hiểu rõ hơn về nhu cầu của bạn.</p>
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full bg-blue-900 hover:bg-blue-800 text-white font-medium py-2 transition-all duration-200"
-                      disabled={isSubmittingInfo}
-                    >
-                      {isSubmittingInfo ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Đang Xử Lý...
-                        </>
-                      ) : (
-                        "Xác Nhận & Tải Kết Quả"
-                      )}
-                    </Button>
-                  </form>
-                </DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-semibold text-blue-900">
+                        Thông Tin Khách Hàng
+                      </DialogTitle>
+                      <DialogDescription className="text-sm text-gray-600">
+                        Vui lòng điền đầy đủ thông tin dưới đây để tải kết quả xử lý ảnh. Các thông tin này sẽ giúp chúng tôi phục vụ bạn tốt hơn.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCustomerInfoSubmit} className="space-y-5">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                          Số Điện Thoại <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="phone"
+                          value={customerInfo.phone}
+                          onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                          required
+                          type="tel"
+                          placeholder="Ví dụ: 0901234567"
+                          className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                            error && !/^\d{9,11}$/.test(customerInfo.phone) ? "border-red-500" : ""
+                          }`}
+                        />
+                        <p className="text-xs text-gray-500">
+                          {error && !/^\d{9,11}$/.test(customerInfo.phone)
+                            ? <span className="text-red-500">Số điện thoại phải từ 9-11 chữ số.</span>
+                            : "Vui lòng nhập số điện thoại chính xác (9-11 số)."}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                          Địa Chỉ Email <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="email"
+                          value={customerInfo.email}
+                          onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                          required
+                          type="email"
+                          placeholder="Ví dụ: tencuaban@email.com"
+                          className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                            error && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email) ? "border-red-500" : ""
+                          }`}
+                        />
+                        <p className="text-xs text-gray-500">
+                          {error && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email)
+                            ? <span className="text-red-500">Email không hợp lệ.</span>
+                            : "Email sẽ được sử dụng để liên hệ và gửi thông tin."}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="field" className="text-sm font-medium text-gray-700">
+                          Lĩnh Vực Công Tác <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="field"
+                          value={customerInfo.field}
+                          onChange={(e) => setCustomerInfo({ ...customerInfo, field: e.target.value })}
+                          required
+                          placeholder="Ví dụ: Thiết kế nội thất, Kiến trúc"
+                          className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                            error && !customerInfo.field.trim() ? "border-red-500" : ""
+                          }`}
+                        />
+                        <p className="text-xs text-gray-500">
+                          {error && !customerInfo.field.trim()
+                            ? <span className="text-red-500">Vui lòng nhập lĩnh vực công tác.</span>
+                            : "Thông tin này giúp chúng tôi hiểu rõ hơn về nhu cầu của bạn."}
+                        </p>
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full bg-blue-900 hover:bg-blue-800 text-white font-medium py-2 transition-all duration-200"
+                        disabled={isSubmittingInfo}
+                      >
+                        {isSubmittingInfo ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Đang Xử Lý...
+                          </>
+                        ) : (
+                          "Xác Nhận & Tải Kết Quả"
+                        )}
+                      </Button>
+                    </form>
+                  </DialogContent>
                 </Dialog>
               )}
             </Card>
