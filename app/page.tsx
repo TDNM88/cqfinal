@@ -233,52 +233,90 @@ export default function ImageInpaintingApp() {
     e.preventDefault();
     if (!maskModalCanvasRef.current || !maskCanvasRef.current) return;
     setIsDrawing(true);
-    setIsErasing(e.button === 2);
-
+    setIsErasing(e.button === 2); // Chuột phải để xóa
+  
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
+  
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     maskCtx.lineCap = "round";
     maskCtx.lineJoin = "round";
-    maskCtx.strokeStyle = isErasing ? "black" : "white";
-    maskCtx.lineWidth = brushSize;
-
-    maskCtx.beginPath();
-    maskCtx.moveTo(x, y);
-
-    setPaths((prev) => [
-      ...prev,
-      { points: [{ x, y }], color: isErasing ? "black" : "white", width: brushSize },
-    ]);
-
+  
+    if (isErasing) {
+      // Xóa các đường mask tại vị trí (x, y)
+      eraseMaskAtPosition(x, y);
+    } else {
+      // Vẽ mask mới (màu trắng)
+      maskCtx.strokeStyle = "white";
+      maskCtx.lineWidth = brushSize;
+      maskCtx.beginPath();
+      maskCtx.moveTo(x, y);
+  
+      setPaths((prev) => [
+        ...prev,
+        { points: [{ x, y }], color: "white", width: brushSize },
+      ]);
+    }
+  
     updateMaskPreview();
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !maskModalCanvasRef.current || !maskCanvasRef.current) return;
-
+  
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
+  
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
-    const currentPath = paths[paths.length - 1];
-    const lastPoint = currentPath.points[currentPath.points.length - 1];
-
-    maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-    maskCtx.stroke();
-    maskCtx.beginPath();
-    maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-
-    setPaths((prev) => {
-      const newPaths = [...prev];
-      newPaths[newPaths.length - 1].points.push({ x, y });
-      return newPaths;
-    });
-
+  
+    if (isErasing) {
+      // Xóa mask tại vị trí con trỏ khi di chuyển
+      eraseMaskAtPosition(x, y);
+    } else {
+      // Vẽ mask mới
+      const currentPath = paths[paths.length - 1];
+      const lastPoint = currentPath.points[currentPath.points.length - 1];
+  
+      maskCtx.strokeStyle = "white";
+      maskCtx.lineWidth = brushSize;
+      maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
+      maskCtx.stroke();
+      maskCtx.beginPath();
+      maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
+  
+      setPaths((prev) => {
+        const newPaths = [...prev];
+        newPaths[newPaths.length - 1].points.push({ x, y });
+        return newPaths;
+      });
+    }
+  
     updateMaskPreview();
+  };
+
+  const eraseMaskAtPosition = (x: number, y: number) => {
+    const eraseRadius = brushSize / 2; // Phạm vi xóa dựa trên kích thước cọ
+  
+    setPaths((prevPaths) => {
+      const updatedPaths = prevPaths.map((path) => {
+        // Chỉ xử lý các đường màu trắng (mask)
+        if (path.color !== "white") return path;
+  
+        const filteredPoints = path.points.filter((point) => {
+          const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
+          return distance > eraseRadius; // Giữ lại điểm ngoài phạm vi xóa
+        });
+  
+        return { ...path, points: filteredPoints };
+      });
+  
+      // Lọc bỏ các path rỗng (không còn điểm nào)
+      return updatedPaths.filter((path) => path.points.length > 0);
+    });
+  
+    redrawCanvas(); // Vẽ lại toàn bộ mask dựa trên paths còn lại
   };
 
   const stopDrawing = () => {
@@ -286,7 +324,7 @@ export default function ImageInpaintingApp() {
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     setIsDrawing(false);
     setIsErasing(false);
-    maskCtx.closePath();
+    if (!isErasing) maskCtx.closePath(); // Chỉ đóng path khi vẽ, không phải khi xóa
     updateMaskPreview();
   };
 
@@ -354,20 +392,20 @@ export default function ImageInpaintingApp() {
   const redrawCanvas = () => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
-
+  
     const maskCtx = maskCanvas.getContext("2d")!;
     maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-
+  
     maskCtx.lineCap = "round";
     maskCtx.lineJoin = "round";
-
+  
     paths.forEach((path) => {
       if (path.points.length === 0) return;
-
+  
       maskCtx.beginPath();
       maskCtx.strokeStyle = path.color;
       maskCtx.lineWidth = path.width;
-
+  
       if (path.points.length === 1) {
         const point = path.points[0];
         maskCtx.arc(point.x, point.y, path.width / 2, 0, Math.PI * 2);
@@ -383,9 +421,9 @@ export default function ImageInpaintingApp() {
         maskCtx.stroke();
       }
     });
-
+  
     updateMaskPreview();
-  };
+};
 
   const updateMaskPreview = () => {
     const inputCanvas = inputCanvasRef.current;
