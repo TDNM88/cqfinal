@@ -102,7 +102,7 @@ export default function ImageInpaintingApp() {
   const [brushSize, setBrushSize] = useState(20);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
-  const [eraseMode, setEraseMode] = useState(false); // Chế độ xóa cho touch
+  const [eraseMode, setEraseMode] = useState(false);
   const [maskOpacity] = useState(0.5);
   const [isProcessing, setIsProcessing] = useState(false);
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
@@ -818,7 +818,11 @@ export default function ImageInpaintingApp() {
                   </Button>
                   <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
+                      <Button
+                        className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                        title="Vẽ Mask"
+                        onClick={() => console.log("Opening mask modal")}
+                      >
                         <Paintbrush className="h-5 w-5" />
                       </Button>
                     </DialogTrigger>
@@ -1048,7 +1052,11 @@ export default function ImageInpaintingApp() {
                     </DropdownMenu>
                     <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
                       <DialogTrigger asChild>
-                        <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
+                        <Button
+                          className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                          title="Vẽ Mask"
+                          onClick={() => console.log("Opening mask modal")}
+                        >
                           <Paintbrush className="h-4 w-4 mr-2" />
                           Vẽ Mask
                         </Button>
