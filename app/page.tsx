@@ -15,19 +15,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-
-type Path = {
-  points: { x: number; y: number }[];
-  color: string;
-  width: number;
-};
+import { fabric } from "fabric";
 
 const productGroups = {
   STANDARD: [
     { name: "C1012 - Glacier White", quote: "Glacier với nền trắng..." },
     // Các sản phẩm khác
   ],
-  // Các nhóm khác giữ nguyên như mã gốc
+  // Các nhóm khác
 };
 
 const products = Object.fromEntries(
@@ -41,24 +36,18 @@ export default function ImageInpaintingApp() {
   const [originalImageData, setOriginalImageData] = useState<string>("");
   const [resizedImageData, setResizedImageData] = useState<string>("");
   const [brushSize, setBrushSize] = useState(20);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [isErasing, setIsErasing] = useState(false);
-  const [eraseMode, setEraseMode] = useState(false);
-  const [maskOpacity] = useState(0.5);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
-  const [paths, setPaths] = useState<Path[]>([]);
   const [isMaskModalOpen, setIsMaskModalOpen] = useState(false);
 
-  const mainCanvasRef = useRef<HTMLCanvasElement>(null); // Chỉ dùng 1 canvas chính
-  const maskCanvasRef = useRef<HTMLCanvasElement | null>(null); // Canvas tạm để vẽ mask
+  const mainCanvasRef = useRef<HTMLCanvasElement>(null);
+  const modalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { processInpainting } = useInpainting();
 
-  // Hiển thị placeholder khi khởi động
   useEffect(() => {
     drawPlaceholder(mainCanvasRef.current);
   }, []);
@@ -74,26 +63,18 @@ export default function ImageInpaintingApp() {
       canvas.height = placeholder.height;
       ctx.drawImage(placeholder, 0, 0);
     };
-    placeholder.onerror = () => {
-      ctx.fillStyle = "#F3F4F6";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    };
   };
 
   const resizeImage = (img: HTMLImageElement, targetWidth = 1152): Promise<string> => {
     return new Promise((resolve, reject) => {
       const minSize = 300;
       if (img.width < minSize || img.height < minSize) {
-        reject(new Error("Ảnh quá nhỏ, vui lòng tải ảnh có kích thước tối thiểu 300px"));
+        reject(new Error("Ảnh quá nhỏ, tối thiểu 300px mỗi chiều"));
         return;
       }
       const aspectRatio = img.width / img.height;
-      let newWidth = img.width;
-      let newHeight = img.height;
-      if (newWidth > targetWidth) {
-        newWidth = targetWidth;
-        newHeight = newWidth / aspectRatio;
-      }
+      let newWidth = Math.min(img.width, targetWidth);
+      let newHeight = newWidth / aspectRatio;
       const canvas = document.createElement("canvas");
       canvas.width = newWidth;
       canvas.height = newHeight;
@@ -110,8 +91,6 @@ export default function ImageInpaintingApp() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setPaths([]);
-    setInpaintedImage(null);
     setError(null);
 
     const reader = new FileReader();
@@ -135,10 +114,28 @@ export default function ImageInpaintingApp() {
     reader.readAsDataURL(file);
   };
 
+  const initializeFabricCanvas = () => {
+    if (!modalCanvasRef.current || !resizedImageData) return;
+
+    const canvas = new fabric.Canvas(modalCanvasRef.current, {
+      isDrawingMode: true,
+    });
+    fabricCanvasRef.current = canvas;
+
+    fabric.Image.fromURL(resizedImageData, (img) => {
+      canvas.setWidth(img.width);
+      canvas.setHeight(img.height);
+      canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+    });
+
+    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+    canvas.freeDrawingBrush.width = brushSize;
+    canvas.freeDrawingBrush.color = "white";
+  };
+
   const drawImageWithMask = () => {
     const canvas = mainCanvasRef.current;
-    const maskCanvas = maskCanvasRef.current;
-    if (!canvas || !maskCanvas || !resizedImageData) return;
+    if (!canvas || !fabricCanvasRef.current) return;
 
     const img = new Image();
     img.onload = () => {
@@ -147,143 +144,49 @@ export default function ImageInpaintingApp() {
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
-      ctx.globalAlpha = maskOpacity;
-      ctx.drawImage(maskCanvas, 0, 0);
-      ctx.globalAlpha = 1.0;
+      const maskData = fabricCanvasRef.current!.toDataURL({
+        format: "png",
+        multiplier: 1,
+      });
+      const maskImg = new Image();
+      maskImg.onload = () => {
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(maskImg, 0, 0);
+        ctx.globalAlpha = 1.0;
+      };
+      maskImg.src = maskData;
     };
-    img.onerror = () => setError("Không thể vẽ ảnh");
     img.src = resizedImageData;
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!mainCanvasRef.current || !maskCanvasRef.current) return;
-    setIsDrawing(true);
-    const isErasingNow = e.button === 2 || eraseMode;
-    setIsErasing(isErasingNow);
-
-    const rect = mainCanvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (mainCanvasRef.current.width / rect.width);
-    const y = (e.clientY - rect.top) * (mainCanvasRef.current.height / rect.height);
-
-    const maskCtx = maskCanvasRef.current.getContext("2d")!;
-    maskCtx.lineCap = "round";
-    maskCtx.lineJoin = "round";
-
-    if (isErasingNow) {
-      eraseMaskAtPosition(x, y);
-    } else {
-      maskCtx.strokeStyle = "white";
-      maskCtx.lineWidth = brushSize;
-      maskCtx.beginPath();
-      maskCtx.moveTo(x, y);
-      setPaths((prev) => [...prev, { points: [{ x, y }], color: "white", width: brushSize }]);
-    }
-    redrawCanvas();
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !mainCanvasRef.current || !maskCanvasRef.current) return;
-
-    const rect = mainCanvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (mainCanvasRef.current.width / rect.width);
-    const y = (e.clientY - rect.top) * (mainCanvasRef.current.height / rect.height);
-
-    const maskCtx = maskCanvasRef.current.getContext("2d")!;
-
-    if (isErasing) {
-      eraseMaskAtPosition(x, y);
-    } else {
-      const currentPath = paths[paths.length - 1];
-      const lastPoint = currentPath.points[currentPath.points.length - 1];
-      maskCtx.strokeStyle = "white";
-      maskCtx.lineWidth = brushSize;
-      maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-      maskCtx.stroke();
-      maskCtx.beginPath();
-      maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-      setPaths((prev) => {
-        const newPaths = [...prev];
-        newPaths[newPaths.length - 1].points.push({ x, y });
-        return newPaths;
-      });
-    }
-    redrawCanvas();
-  };
-
-  const stopDrawing = () => {
-    if (!maskCanvasRef.current) return;
-    setIsDrawing(false);
-    setIsErasing(false);
-    const maskCtx = maskCanvasRef.current.getContext("2d")!;
-    if (!isErasing) maskCtx.closePath();
-    drawImageWithMask();
-  };
-
-  const eraseMaskAtPosition = (x: number, y: number) => {
-    const eraseRadius = brushSize / 2;
-    setPaths((prevPaths) =>
-      prevPaths
-        .map((path) => {
-          if (path.color !== "white") return path;
-          const filteredPoints = path.points.filter((point) => {
-            const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
-            return distance > eraseRadius;
-          });
-          return { ...path, points: filteredPoints };
-        })
-        .filter((path) => path.points.length > 0)
-    );
-    redrawCanvas();
-  };
-
-  const redrawCanvas = () => {
-    const maskCanvas = maskCanvasRef.current;
-    if (!maskCanvas) return;
-
+  const getMaskImage = () => {
+    if (!fabricCanvasRef.current) return null;
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = fabricCanvasRef.current.width;
+    maskCanvas.height = fabricCanvasRef.current.height;
     const maskCtx = maskCanvas.getContext("2d")!;
-    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-    maskCtx.lineCap = "round";
-    maskCtx.lineJoin = "round";
+    maskCtx.fillStyle = "black";
+    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
 
-    paths.forEach((path) => {
-      if (path.points.length === 0) return;
-      maskCtx.beginPath();
-      maskCtx.strokeStyle = path.color;
-      maskCtx.lineWidth = path.width;
-
-      if (path.points.length === 1) {
-        const point = path.points[0];
-        maskCtx.arc(point.x, point.y, path.width / 2, 0, Math.PI * 2);
-        maskCtx.fillStyle = path.color;
-        maskCtx.fill();
-      } else {
-        maskCtx.moveTo(path.points[0].x, path.points[0].y);
-        for (let i = 0; i < path.points.length - 1; i++) {
-          const xc = (path.points[i].x + path.points[i + 1].x) / 2;
-          const yc = (path.points[i].y + path.points[i + 1].y) / 2;
-          maskCtx.quadraticCurveTo(path.points[i].x, path.points[i].y, xc, yc);
-        }
-        maskCtx.stroke();
+    const maskData = fabricCanvasRef.current.toDataURL({ format: "png" });
+    const maskImg = new Image();
+    maskImg.onload = () => {
+      maskCtx.drawImage(maskImg, 0, 0);
+      const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const isWhite =
+          imageData.data[i] > 0 || imageData.data[i + 1] > 0 || imageData.data[i + 2] > 0;
+        imageData.data[i] = isWhite ? 255 : 0;
+        imageData.data[i + 1] = isWhite ? 255 : 0;
+        imageData.data[i + 2] = isWhite ? 255 : 0;
+        imageData.data[i + 3] = 255;
       }
-    });
-  };
-
-  const getCombinedImage = async (): Promise<string> => {
-    if (!image || !maskCanvasRef.current) throw new Error("Không tìm thấy ảnh hoặc mask");
-
-    const maskCanvasBW = document.createElement("canvas");
-    maskCanvasBW.width = image.width;
-    maskCanvasBW.height = image.height;
-    const maskCtxBW = maskCanvasBW.getContext("2d")!;
-
-    maskCtxBW.fillStyle = "black";
-    maskCtxBW.fillRect(0, 0, maskCanvasBW.width, maskCanvasBW.height);
-    maskCtxBW.drawImage(maskCanvasRef.current, 0, 0);
-
-    const result = maskCanvasBW.toDataURL("image/png");
-    maskCanvasBW.remove();
-    return result;
+      maskCtx.putImageData(imageData, 0, 0);
+    };
+    maskImg.src = maskData;
+    const maskUrl = maskCanvas.toDataURL("image/png");
+    maskCanvas.remove();
+    return maskUrl;
   };
 
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -327,14 +230,12 @@ export default function ImageInpaintingApp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!image || !selectedProduct || paths.length === 0) {
+    if (!image || !selectedProduct || !fabricCanvasRef.current) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
 
     setIsProcessing(true);
-    setError(null);
-
     const canvas = mainCanvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext("2d")!;
@@ -346,17 +247,11 @@ export default function ImageInpaintingApp() {
     }
 
     try {
-      const maskImage = await getCombinedImage();
-      let finalImageData = resizedImageData;
-      let finalMaskData = maskImage;
-
-      const productImagePath = products[selectedProduct as keyof typeof products];
-      const productImageBase64 = await convertImageToBase64(productImagePath);
-
-      const resultUrl = await processInpainting(finalImageData, productImageBase64, finalMaskData);
+      const maskImage = getMaskImage();
+      const productImageBase64 = await convertImageToBase64(products[selectedProduct]);
+      const resultUrl = await processInpainting(resizedImageData, productImageBase64, maskImage!);
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
-      setInpaintedImage(watermarkedImageUrl);
 
       const img = new Image();
       img.onload = () => {
@@ -378,10 +273,12 @@ export default function ImageInpaintingApp() {
     setImage(null);
     setOriginalImageData("");
     setResizedImageData("");
-    setPaths([]);
-    setInpaintedImage(null);
     setError(null);
     setSelectedProduct(null);
+    if (fabricCanvasRef.current) {
+      fabricCanvasRef.current.dispose();
+      fabricCanvasRef.current = null;
+    }
     drawPlaceholder(mainCanvasRef.current);
   };
 
@@ -397,7 +294,6 @@ export default function ImageInpaintingApp() {
               {!image && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
-                  <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
@@ -427,78 +323,30 @@ export default function ImageInpaintingApp() {
                     Tải ảnh mới
                   </Button>
                   <Button
-                    onClick={() => setPaths([]) && drawImageWithMask()}
+                    onClick={() => {
+                      if (fabricCanvasRef.current) {
+                        fabricCanvasRef.current.clear();
+                        fabric.Image.fromURL(resizedImageData, (img) => {
+                          fabricCanvasRef.current!.setBackgroundImage(
+                            img,
+                            fabricCanvasRef.current!.renderAll.bind(fabricCanvasRef.current)
+                          );
+                        });
+                        drawImageWithMask();
+                      }
+                    }}
                     className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Xóa mask
                   </Button>
-                  <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
-                    <DialogContent className="max-w-[100vw] max-h-[100vh] overflow-auto p-6 bg-white rounded-lg">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-semibold text-blue-900">
-                          Vẽ Mask
-                        </DialogTitle>
-                        <DialogDescription className="text-sm text-gray-600">
-                          Dùng chuột trái để vẽ mask, chuột phải để xóa mask.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="flex flex-col gap-6">
-                        <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
-                          {resizedImageData && (
-                            <img
-                              src={resizedImageData}
-                              alt="Uploaded"
-                              className="max-w-full max-h-[90vh]"
-                            />
-                          )}
-                          <canvas
-                            ref={mainCanvasRef}
-                            className="absolute top-0 left-0 max-w-full max-h-[90vh] cursor-crosshair"
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={stopDrawing}
-                            onMouseLeave={stopDrawing}
-                            onContextMenu={(e) => e.preventDefault()}
-                          />
-                        </div>
-                        <div className="flex justify-between items-center flex-col md:flex-row gap-3">
-                          <div className="flex items-center gap-3">
-                            <label className="text-sm font-medium text-blue-900">
-                              Kích thước: {brushSize}px
-                            </label>
-                            <Slider
-                              value={[brushSize]}
-                              min={1}
-                              max={50}
-                              step={1}
-                              onValueChange={(value) => setBrushSize(value[0])}
-                              className="w-32"
-                            />
-                            <Button
-                              onClick={() => setEraseMode(!eraseMode)}
-                              className={`${
-                                eraseMode
-                                  ? "bg-red-500 hover:bg-red-600"
-                                  : "bg-blue-900 hover:bg-blue-800"
-                              } text-white`}
-                            >
-                              {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
-                            </Button>
-                          </div>
-                          <Button
-                            onClick={() => {
-                              setIsMaskModalOpen(false);
-                              drawImageWithMask();
-                            }}
-                            className="bg-blue-900 hover:bg-blue-800 text-white"
-                          >
-                            Xác nhận
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button
+                    onClick={() => setIsMaskModalOpen(true)}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Vẽ Mask
+                  </Button>
                   <Button
                     onClick={handleReset}
                     className="bg-gray-200 hover:bg-gray-300 text-blue-900"
@@ -521,6 +369,51 @@ export default function ImageInpaintingApp() {
                 </Button>
               </div>
             )}
+
+            <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
+              <DialogContent className="max-w-[100vw] max-h-[100vh] overflow-auto p-6 bg-white rounded-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold text-blue-900">Vẽ Mask</DialogTitle>
+                  <DialogDescription className="text-sm text-gray-600">
+                    Dùng chuột để vẽ mask (màu trắng).
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-6">
+                  <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
+                    <canvas ref={modalCanvasRef} className="max-w-full max-h-[90vh]" />
+                  </div>
+                  <div className="flex justify-between items-center flex-col md:flex-row gap-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm font-medium text-blue-900">
+                        Kích thước: {brushSize}px
+                      </label>
+                      <Slider
+                        value={[brushSize]}
+                        min={1}
+                        max={50}
+                        step={1}
+                        onValueChange={(value) => {
+                          setBrushSize(value[0]);
+                          if (fabricCanvasRef.current) {
+                            fabricCanvasRef.current.freeDrawingBrush.width = value[0];
+                          }
+                        }}
+                        className="w-32"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setIsMaskModalOpen(false);
+                        drawImageWithMask();
+                      }}
+                      className="bg-blue-900 hover:bg-blue-800 text-white"
+                    >
+                      Xác nhận
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {error && (
               <Alert variant="destructive">
