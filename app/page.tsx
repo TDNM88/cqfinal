@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -9,9 +11,9 @@ import { useInpainting } from "@/hooks/useInpainting";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
@@ -20,6 +22,7 @@ type Path = {
   color: string;
   width: number;
 };
+
 
 const productGroups = {
   STANDARD: [
@@ -74,7 +77,6 @@ const productGroups = {
     { name: "C5366 - Skiron", quote: "Skiron tái hiện hình ảnh những con sóng biển trên nền đá, với các đường vân xanh xếp lớp cùng những mảng trắng và xám, phù hợp cho không gian nội thất hiện đại." },
   ],
 };
-
 const products = Object.fromEntries(
   Object.values(productGroups)
     .flat()
@@ -105,42 +107,43 @@ export default function ImageInpaintingApp() {
 
   const { processInpainting } = useInpainting();
 
+  // Khởi tạo canvas với placeholder
   useEffect(() => {
     const initCanvasWithPlaceholder = (canvas: HTMLCanvasElement | null) => {
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-  
+
       const placeholder = new Image();
-      placeholder.src = "/logo2048.jpg"; // Đảm bảo đường dẫn đúng trong dự án
+      placeholder.src = "/logo2048.jpg";
       placeholder.onload = () => {
         canvas.width = placeholder.width;
         canvas.height = placeholder.height;
         ctx.drawImage(placeholder, 0, 0, canvas.width, canvas.height);
       };
       placeholder.onerror = () => {
-        ctx.fillStyle = "#F3F4F6"; // Fallback nếu không tải được logo
+        ctx.fillStyle = "#F3F4F6";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       };
     };
-  
+
     initCanvasWithPlaceholder(inputCanvasRef.current);
     initCanvasWithPlaceholder(outputCanvasRef.current);
-  
+
     maskCanvasRef.current = document.createElement("canvas");
-  
+
     if (isMaskModalOpen && maskModalCanvasRef.current && originalImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
         canvas.width = img.width;
         canvas.height = img.height;
-  
+
         const maxDisplayWidth = window.innerWidth * 0.95;
         const maxDisplayHeight = window.innerHeight * 0.95;
         let displayWidth = img.width;
         let displayHeight = img.height;
-  
+
         if (displayWidth > maxDisplayWidth) {
           displayWidth = maxDisplayWidth;
           displayHeight = displayWidth * (img.height / img.width);
@@ -149,10 +152,10 @@ export default function ImageInpaintingApp() {
           displayHeight = maxDisplayHeight;
           displayWidth = displayHeight * (img.width / img.height);
         }
-  
+
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
-  
+
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, img.width, img.height);
         redrawCanvas();
@@ -160,12 +163,13 @@ export default function ImageInpaintingApp() {
       img.onerror = () => setError("Không thể tải ảnh trong modal");
       img.src = originalImageData;
     }
-  
+
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
   }, [isMaskModalOpen, originalImageData]);
 
+  // Resize ảnh
   const resizeImage = (img: HTMLImageElement): Promise<string> => {
     return new Promise((resolve, reject) => {
       const minSize = 300;
@@ -189,6 +193,7 @@ export default function ImageInpaintingApp() {
       canvas.width = newWidth;
       canvas.height = newHeight;
       const ctx = canvas.getContext("2d")!;
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, newWidth, newHeight);
       const dataUrl = canvas.toDataURL("image/png");
       canvas.remove();
@@ -196,45 +201,15 @@ export default function ImageInpaintingApp() {
     });
   };
 
-  const drawImageOnCanvas = (imageData: string) => {
-    const inputCanvas = inputCanvasRef.current;
-    const outputCanvas = outputCanvasRef.current;
-    const maskCanvas = maskCanvasRef.current;
-    if (!inputCanvas || !maskCanvas) return;
-  
-    const img = new Image();
-    img.onload = () => {
-      inputCanvas.width = img.width;
-      inputCanvas.height = img.height;
-      maskCanvas.width = img.width;
-      maskCanvas.height = img.height;
-      if (outputCanvas) {
-        outputCanvas.width = img.width;
-        outputCanvas.height = img.height;
-        const outputCtx = outputCanvas.getContext("2d")!;
-        const placeholder = new Image();
-        placeholder.src = "/logo2048.jpg";
-        placeholder.onload = () => {
-          outputCtx.drawImage(placeholder, 0, 0, outputCanvas.width, outputCanvas.height);
-        };
-      }
-  
-      const inputCtx = inputCanvas.getContext("2d")!;
-      inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
-      inputCtx.drawImage(img, 0, 0, img.width, img.height);
-    };
-    img.onerror = () => setError("Không thể vẽ ảnh lên canvas");
-    img.src = imageData;
-  };
-  
+  // Tải ảnh lên
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-  
+
     setPaths([]);
     setInpaintedImage(null);
     setError(null);
-  
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       const img = new window.Image();
@@ -242,11 +217,12 @@ export default function ImageInpaintingApp() {
         try {
           setImage(img);
           setOriginalImageData(event.target?.result as string);
-          drawImageOnCanvas(event.target?.result as string); // Dùng ảnh gốc
-          const resizedData = await resizeImage(img); // Tạo resizedData để dùng sau
+          drawImageOnCanvas(event.target?.result as string); // Hiển thị ảnh gốc
+          const resizedData = await resizeImage(img); // Tạo resized để dùng sau
           setResizedImageData(resizedData);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
+          drawPlaceholder(inputCanvasRef.current);
         }
       };
       img.onerror = () => setError("Không thể tải ảnh");
@@ -255,6 +231,42 @@ export default function ImageInpaintingApp() {
     reader.readAsDataURL(file);
   };
 
+  // Vẽ ảnh lên canvas 1
+  const drawImageOnCanvas = (imageData: string) => {
+    const inputCanvas = inputCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!inputCanvas || !maskCanvas) return;
+
+    const img = new Image();
+    img.onload = () => {
+      inputCanvas.width = img.width;
+      inputCanvas.height = img.height;
+      maskCanvas.width = img.width; // Đảm bảo mask cùng kích thước
+      maskCanvas.height = img.height;
+      const inputCtx = inputCanvas.getContext("2d")!;
+      inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
+      inputCtx.drawImage(img, 0, 0);
+      redrawCanvas(); // Cập nhật mask nếu có
+    };
+    img.onerror = () => setError("Không thể vẽ ảnh lên canvas");
+    img.src = imageData;
+  };
+
+  // Vẽ placeholder
+  const drawPlaceholder = (canvas: HTMLCanvasElement | null) => {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const placeholder = new Image();
+    placeholder.src = "/logo2048.jpg";
+    placeholder.onload = () => {
+      canvas.width = placeholder.width;
+      canvas.height = placeholder.height;
+      ctx.drawImage(placeholder, 0, 0);
+    };
+  };
+
+  // Bắt đầu vẽ
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     if (!maskModalCanvasRef.current || !maskCanvasRef.current) return;
@@ -441,7 +453,7 @@ export default function ImageInpaintingApp() {
     const modalCanvas = maskModalCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
     if (!inputCanvas || !maskCanvas || !originalImageData) return;
-  
+
     const img = new Image();
     img.onload = () => {
       const inputCtx = inputCanvas.getContext("2d")!;
@@ -450,7 +462,7 @@ export default function ImageInpaintingApp() {
       inputCtx.globalAlpha = maskOpacity;
       inputCtx.drawImage(maskCanvas, 0, 0);
       inputCtx.globalAlpha = 1.0;
-  
+
       if (isMaskModalOpen && modalCanvas) {
         const modalCtx = modalCanvas.getContext("2d")!;
         modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
@@ -461,25 +473,25 @@ export default function ImageInpaintingApp() {
       }
     };
     img.onerror = () => setError("Không thể cập nhật preview");
-    img.src = originalImageData; // Dùng ảnh gốc thay vì resizedImageData
+    img.src = originalImageData;
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!image || !selectedProduct || paths.length === 0) {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
-  
+
     setIsProcessing(true);
     setError(null);
-  
+
     try {
       const maskImage = await getCombinedImage();
-  
+
       let finalImageData = originalImageData;
       let finalMaskData = maskImage;
-  
+
       if (image.width > 1152) {
         finalImageData = await resizeImage(image);
         const maskImg = new Image();
@@ -487,15 +499,15 @@ const handleSubmit = async (e: React.FormEvent) => {
         await new Promise((resolve) => (maskImg.onload = resolve));
         finalMaskData = await resizeImage(maskImg);
       }
-  
+
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
 
-  const resultUrl = await processInpainting(finalImageData, productImageBase64, finalMaskData);
+      const resultUrl = await processInpainting(finalImageData, productImageBase64, finalMaskData);
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
-  
+
       const img = new Image();
       img.onload = () => {
         const outputCanvas = outputCanvasRef.current;
@@ -505,7 +517,6 @@ const handleSubmit = async (e: React.FormEvent) => {
           outputCanvas.getContext("2d")!.drawImage(img, 0, 0);
         }
       };
-      img.onerror = () => setError("Không thể hiển thị kết quả");
       img.src = watermarkedImageUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi");
@@ -513,27 +524,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       setIsProcessing(false);
     }
   };
-  
+
   const getCombinedImage = async (): Promise<string> => {
     if (!image || !maskCanvasRef.current) throw new Error("Không tìm thấy ảnh hoặc mask");
-    const maskCanvasBW = document.createElement("canvas");
-    maskCanvasBW.width = image.width;
-    maskCanvasBW.height = image.height;
-    const maskCtxBW = maskCanvasBW.getContext("2d")!;
-    maskCtxBW.drawImage(maskCanvasRef.current, 0, 0);
-
-    const maskImageData = maskCtxBW.getImageData(0, 0, image.width, image.height);
-    const maskData = maskImageData.data;
-
-    for (let i = 0; i < maskData.length; i += 4) {
-      const alpha = maskData[i + 3];
-      maskCtxBW.fillStyle = alpha > 0 ? "white" : "black";
-      maskCtxBW.fillRect((i / 4) % image.width, Math.floor((i / 4) / image.width), 1, 1);
-    }
-
-    const result = maskCanvasBW.toDataURL("image/png");
-    maskCanvasBW.remove();
-    return result;
+    return maskCanvasRef.current.toDataURL("image/png");
   };
 
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -577,7 +571,19 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const handleClearMask = () => {
     setPaths([]);
-    redrawCanvas();
+    redrawCanvas(); // Cập nhật canvas 1 về ảnh gốc
+  };
+
+  const handleReset = () => {
+    setImage(null);
+    setOriginalImageData("");
+    setResizedImageData("");
+    setPaths([]);
+    setInpaintedImage(null);
+    setError(null);
+    setSelectedProduct(null);
+    drawPlaceholder(inputCanvasRef.current);
+    drawPlaceholder(outputCanvasRef.current);
   };
 
   return (
@@ -587,13 +593,27 @@ const handleSubmit = async (e: React.FormEvent) => {
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            <div>
+            <div className="lg:hidden">
               <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
                 <canvas ref={inputCanvasRef} className="max-w-full max-h-full object-contain" />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
                     <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Tải ảnh lên
+                    </Button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
                   </div>
                 )}
                 {isProcessing && (
@@ -602,102 +622,104 @@ const handleSubmit = async (e: React.FormEvent) => {
                   </div>
                 )}
               </div>
-              <div className="flex justify-center gap-2 mt-4">
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                >
-                  <Upload className="h-5 w-5" />
-                </Button>
-                <Button
-                  onClick={handleClearMask}
-                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                >
-                  <RefreshCw className="h-5 w-5" />
-                </Button>
-                <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
-                      <Paintbrush className="h-5 w-5" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-hidden p-6 bg-white rounded-lg">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-semibold text-blue-900">
-                        Vẽ Mask
-                      </DialogTitle>
-                      <DialogDescription className="text-sm text-gray-600">
-                        Dùng chuột trái để vẽ mask, chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-6">
-                      <div className="flex items-center justify-center">
-                        <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
-                          <canvas
-                            ref={maskModalCanvasRef}
-                            className="max-w-full cursor-crosshair"
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={stopDrawing}
-                            onMouseLeave={stopDrawing}
-                            onContextMenu={(e) => e.preventDefault()}
-                            onTouchStart={startDrawingTouch}
-                            onTouchMove={drawTouch}
-                            onTouchEnd={stopDrawingTouch}
-                          />
+              {image && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <Upload className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    onClick={handleClearMask}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <RefreshCw className="h-5 w-5" />
+                  </Button>
+                  <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
+                        <Paintbrush className="h-5 w-5" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[fit-content] max-h-[fit-content] overflow-hidden p-6 bg-white rounded-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-semibold text-blue-900">
+                          Vẽ Mask
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-gray-600">
+                          Dùng chuột trái để vẽ mask, chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex flex-col gap-6">
+                        <div className="flex items-center justify-center">
+                          <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
+                            <canvas
+                              ref={maskModalCanvasRef}
+                              className="max-w-full cursor-crosshair"
+                              onMouseDown={startDrawing}
+                              onMouseMove={draw}
+                              onMouseUp={stopDrawing}
+                              onMouseLeave={stopDrawing}
+                              onContextMenu={(e) => e.preventDefault()}
+                              onTouchStart={startDrawingTouch}
+                              onTouchMove={drawTouch}
+                              onTouchEnd={stopDrawingTouch}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex justify-between items-center flex-col md:flex-row gap-3">
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-blue-900">
-                            Kích thước: {brushSize}px
-                          </label>
-                          <Slider
-                            value={[brushSize]}
-                            min={1}
-                            max={50}
-                            step={1}
-                            onValueChange={(value) => setBrushSize(value[0])}
-                            className="w-32"
-                          />
+                        <div className="flex justify-between items-center flex-col md:flex-row gap-3">
+                          <div className="flex items-center gap-3">
+                            <label className="text-sm font-medium text-blue-900">
+                              Kích thước: {brushSize}px
+                            </label>
+                            <Slider
+                              value={[brushSize]}
+                              min={1}
+                              max={50}
+                              step={1}
+                              onValueChange={(value) => setBrushSize(value[0])}
+                              className="w-32"
+                            />
+                            <Button
+                              onClick={() => setEraseMode(!eraseMode)}
+                              className={`${
+                                eraseMode
+                                  ? "bg-red-500 hover:bg-red-600"
+                                  : "bg-blue-900 hover:bg-blue-800"
+                              } text-white`}
+                            >
+                              {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
+                            </Button>
+                          </div>
                           <Button
-                            onClick={() => setEraseMode(!eraseMode)}
-                            className={`${
-                              eraseMode
-                                ? "bg-red-500 hover:bg-red-600"
-                                : "bg-blue-900 hover:bg-blue-800"
-                            } text-white`}
+                            onClick={() => setIsMaskModalOpen(false)}
+                            className="bg-blue-900 hover:bg-blue-800 text-white"
                           >
-                            {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
+                            Xác nhận
                           </Button>
                         </div>
-                        <Button
-                          onClick={() => setIsMaskModalOpen(false)}
-                          className="bg-blue-900 hover:bg-blue-800 text-white"
-                        >
-                          Xác nhận
-                        </Button>
                       </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Button
-                  onClick={() => {
-                    const canvas = inputCanvasRef.current;
-                    if (canvas) {
-                      const url = canvas.toDataURL("image/png");
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = "canvas.png";
-                      link.click();
-                      link.remove();
-                    }
-                  }}
-                  className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                >
-                  <Save className="h-5 w-5" />
-                </Button>
-              </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Button
+                    onClick={() => {
+                      const canvas = inputCanvasRef.current;
+                      if (canvas) {
+                        const url = canvas.toDataURL("image/png");
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = "canvas.png";
+                        link.click();
+                        link.remove();
+                      }
+                    }}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <Save className="h-5 w-5" />
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="hidden lg:grid grid-cols-2 gap-4">
@@ -708,6 +730,20 @@ const handleSubmit = async (e: React.FormEvent) => {
                   {!image && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
+                      <Button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Tải ảnh lên
+                      </Button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
                     </div>
                   )}
                 </div>
@@ -809,6 +845,13 @@ const handleSubmit = async (e: React.FormEvent) => {
                       </div>
                     </DialogContent>
                   </Dialog>
+                  <Button
+                    onClick={handleReset}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Làm lại từ đầu
+                  </Button>
                 </div>
                 <Button
                   onClick={handleSubmit}
