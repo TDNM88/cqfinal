@@ -108,16 +108,26 @@ export default function ImageInpaintingApp() {
   const { processInpainting } = useInpainting();
 
   useEffect(() => {
-    const initCanvas = (canvas: HTMLCanvasElement | null) => {
+    const initCanvasWithPlaceholder = (canvas: HTMLCanvasElement | null) => {
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = "#F3F4F6";
+      if (!ctx) return;
+  
+      const placeholder = new Image();
+      placeholder.src = "/logo2048.jpg"; // Đảm bảo đường dẫn đúng trong dự án
+      placeholder.onload = () => {
+        canvas.width = placeholder.width;
+        canvas.height = placeholder.height;
+        ctx.drawImage(placeholder, 0, 0, canvas.width, canvas.height);
+      };
+      placeholder.onerror = () => {
+        ctx.fillStyle = "#F3F4F6"; // Fallback nếu không tải được logo
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
+      };
     };
-    initCanvas(inputCanvasRef.current);
-    initCanvas(outputCanvasRef.current);
+  
+    initCanvasWithPlaceholder(inputCanvasRef.current);
+    initCanvasWithPlaceholder(outputCanvasRef.current);
   
     maskCanvasRef.current = document.createElement("canvas");
   
@@ -125,17 +135,14 @@ export default function ImageInpaintingApp() {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
-        // Đặt kích thước canvas bằng kích thước ảnh gốc
         canvas.width = img.width;
         canvas.height = img.height;
   
-        // Tăng kích thước hiển thị lên, tối đa 95% màn hình
-        const maxDisplayWidth = window.innerWidth * 0.95; // Tăng từ 0.9 lên 0.95
-        const maxDisplayHeight = window.innerHeight * 0.95; // Tăng từ 0.8 lên 0.95
+        const maxDisplayWidth = window.innerWidth * 0.95;
+        const maxDisplayHeight = window.innerHeight * 0.95;
         let displayWidth = img.width;
         let displayHeight = img.height;
   
-        // Nếu ảnh lớn hơn kích thước tối đa, điều chỉnh tỷ lệ
         if (displayWidth > maxDisplayWidth) {
           displayWidth = maxDisplayWidth;
           displayHeight = displayWidth * (img.height / img.width);
@@ -145,7 +152,6 @@ export default function ImageInpaintingApp() {
           displayWidth = displayHeight * (img.width / img.height);
         }
   
-        // Đặt kích thước hiển thị
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
   
@@ -161,8 +167,6 @@ export default function ImageInpaintingApp() {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
   }, [isMaskModalOpen, originalImageData]);
-
-
 
   const resizeImage = (img: HTMLImageElement): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -194,41 +198,12 @@ export default function ImageInpaintingApp() {
     });
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setPaths([]);
-    setInpaintedImage(null);
-    setError(null);
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const img = new window.Image();
-      img.onload = async () => {
-        try {
-          setImage(img);
-          setOriginalImageData(event.target?.result as string);
-
-          const resizedData = await resizeImage(img);
-          setResizedImageData(resizedData);
-          drawImageOnCanvas(resizedData);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
-        }
-      };
-      img.onerror = () => setError("Không thể tải ảnh");
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const drawImageOnCanvas = (resizedData: string) => {
+  const drawImageOnCanvas = (imageData: string) => {
     const inputCanvas = inputCanvasRef.current;
     const outputCanvas = outputCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
     if (!inputCanvas || !maskCanvas) return;
-
+  
     const img = new Image();
     img.onload = () => {
       inputCanvas.width = img.width;
@@ -239,16 +214,47 @@ export default function ImageInpaintingApp() {
         outputCanvas.width = img.width;
         outputCanvas.height = img.height;
         const outputCtx = outputCanvas.getContext("2d")!;
-        outputCtx.fillStyle = "#F3F4F6";
-        outputCtx.fillRect(0, 0, img.width, img.height);
+        const placeholder = new Image();
+        placeholder.src = "/logo2048.jpg";
+        placeholder.onload = () => {
+          outputCtx.drawImage(placeholder, 0, 0, outputCanvas.width, outputCanvas.height);
+        };
       }
-
+  
       const inputCtx = inputCanvas.getContext("2d")!;
       inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
       inputCtx.drawImage(img, 0, 0, img.width, img.height);
     };
     img.onerror = () => setError("Không thể vẽ ảnh lên canvas");
-    img.src = resizedData;
+    img.src = imageData;
+  };
+  
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+  
+    setPaths([]);
+    setInpaintedImage(null);
+    setError(null);
+  
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const img = new window.Image();
+      img.onload = async () => {
+        try {
+          setImage(img);
+          setOriginalImageData(event.target?.result as string);
+          drawImageOnCanvas(event.target?.result as string); // Dùng ảnh gốc
+          const resizedData = await resizeImage(img); // Tạo resizedData để dùng sau
+          setResizedImageData(resizedData);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
+        }
+      };
+      img.onerror = () => setError("Không thể tải ảnh");
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -436,8 +442,8 @@ export default function ImageInpaintingApp() {
     const inputCanvas = inputCanvasRef.current;
     const modalCanvas = maskModalCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
-    if (!inputCanvas || !maskCanvas || !resizedImageData) return;
-
+    if (!inputCanvas || !maskCanvas || !originalImageData) return;
+  
     const img = new Image();
     img.onload = () => {
       const inputCtx = inputCanvas.getContext("2d")!;
@@ -446,7 +452,7 @@ export default function ImageInpaintingApp() {
       inputCtx.globalAlpha = maskOpacity;
       inputCtx.drawImage(maskCanvas, 0, 0);
       inputCtx.globalAlpha = 1.0;
-
+  
       if (isMaskModalOpen && modalCanvas) {
         const modalCtx = modalCanvas.getContext("2d")!;
         modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
@@ -457,7 +463,7 @@ export default function ImageInpaintingApp() {
       }
     };
     img.onerror = () => setError("Không thể cập nhật preview");
-    img.src = resizedImageData;
+    img.src = originalImageData; // Dùng ảnh gốc thay vì resizedImageData
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -466,16 +472,16 @@ export default function ImageInpaintingApp() {
       setError("Vui lòng tải ảnh, chọn sản phẩm và vẽ mask trước khi xử lý");
       return;
     }
-
+  
     setIsProcessing(true);
     setError(null);
-
+  
     try {
       const maskImage = await getCombinedImage();
-
+  
       let finalImageData = originalImageData;
       let finalMaskData = maskImage;
-
+  
       if (image.width > 1152) {
         finalImageData = await resizeImage(image);
         const maskImg = new Image();
@@ -483,28 +489,25 @@ export default function ImageInpaintingApp() {
         await new Promise((resolve) => (maskImg.onload = resolve));
         finalMaskData = await resizeImage(maskImg);
       }
-
+  
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
-
+  
       const resultUrl = await processInpainting(finalImageData, productImageBase64, finalMaskData);
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
-
+  
       const img = new Image();
       img.onload = () => {
-        const inputCanvas = inputCanvasRef.current;
         const outputCanvas = outputCanvasRef.current;
-        if (inputCanvas && outputCanvas) {
-          inputCanvas.width = img.width;
-          inputCanvas.height = img.height;
+        if (outputCanvas) {
           outputCanvas.width = img.width;
           outputCanvas.height = img.height;
-          inputCanvas.getContext("2d")!.drawImage(img, 0, 0);
           outputCanvas.getContext("2d")!.drawImage(img, 0, 0);
         }
       };
+      img.onerror = () => setError("Không thể hiển thị kết quả");
       img.src = watermarkedImageUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi");
@@ -512,7 +515,6 @@ export default function ImageInpaintingApp() {
       setIsProcessing(false);
     }
   };
-
   const getCombinedImage = async (): Promise<string> => {
     if (!image || !maskCanvasRef.current) throw new Error("Không tìm thấy ảnh hoặc mask");
     const maskCanvasBW = document.createElement("canvas");
