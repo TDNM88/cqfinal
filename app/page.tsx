@@ -112,7 +112,7 @@ export default function ImageInpaintingApp() {
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-
+  
       const placeholder = new Image();
       placeholder.src = "/logo2048.jpg";
       placeholder.onload = () => {
@@ -125,13 +125,13 @@ export default function ImageInpaintingApp() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       };
     };
-
+  
     initCanvasWithPlaceholder(inputCanvasRef.current);
     initCanvasWithPlaceholder(outputCanvasRef.current);
-
+  
     maskCanvasRef.current = document.createElement("canvas");
-
-    if (isMaskModalOpen && maskModalCanvasRef.current && originalImageData) {
+  
+    if (isMaskModalOpen && maskModalCanvasRef.current && resizedImageData) { // Dùng resizedImageData
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
@@ -139,7 +139,7 @@ export default function ImageInpaintingApp() {
         const maxHeight = window.innerHeight * 0.9;
         let displayWidth = img.width;
         let displayHeight = img.height;
-
+  
         if (displayWidth > maxWidth) {
           displayWidth = maxWidth;
           displayHeight = displayWidth * (img.height / img.width);
@@ -148,30 +148,30 @@ export default function ImageInpaintingApp() {
           displayHeight = maxHeight;
           displayWidth = displayHeight * (img.width / img.height);
         }
-
+  
         canvas.width = img.width;
         canvas.height = img.height;
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
-
+  
         if (maskCanvasRef.current) {
           maskCanvasRef.current.width = img.width;
           maskCanvasRef.current.height = img.height;
         }
-
+  
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, img.width, img.height);
         redrawCanvas();
       };
       img.onerror = () => setError("Không thể tải ảnh trong modal");
-      img.src = originalImageData;
+      img.src = resizedImageData; // Dùng resizedImageData thay vì originalImageData
     }
-
+  
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
-  }, [isMaskModalOpen, originalImageData]);
-
+  }, [isMaskModalOpen, resizedImageData]);
+  
   const resizeImage = (img: HTMLImageElement, targetWidth?: number): Promise<string> => {
     return new Promise((resolve, reject) => {
       const minSize = 300;
