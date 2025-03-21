@@ -893,111 +893,14 @@ export default function ImageInpaintingApp() {
         CaslaQuartz AI
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
+      <div className="grid grid-cols-1 md:grid-cols-[3fr_1fr] gap-8 flex-grow">
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            <div className="lg:hidden">
-              <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-                <canvas
-                  ref={inputCanvasRef}
-                  className="max-w-full cursor-crosshair"
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
-                  onContextMenu={(e) => e.preventDefault()}
-                  onTouchStart={startDrawingTouch}
-                  onTouchMove={drawTouch}
-                  onTouchEnd={stopDrawingTouch}
-                  onClick={deletePathAtPosition}
-                />
-                {!image && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
-                    <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Tải ảnh lên
-                    </Button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageUpload}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                  </div>
-                )}
-                {isProcessing && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                    <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
-                    <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
-                    <div className="mt-4 text-center">
-                      <p className="text-blue-900 font-medium">Ý nghĩa sản phẩm</p>
-                      <p className="text-sm text-gray-700">{getProductQuote()}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {image && (
-                <div className="flex justify-center gap-2 mt-4">
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <Upload className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    onClick={handleClearMask}
-                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <RefreshCw className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    onClick={() => setIsBrushSizeOpen(true)}
-                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <Paintbrush className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    onClick={saveCanvasState}
-                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                  >
-                    <Save className="h-5 w-5" />
-                  </Button>
-                  {isBrushSizeOpen && (
-                    <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
-                      <label className="text-sm font-medium text-blue-900">
-                        Kích thước: {brushSize}px
-                      </label>
-                      <Slider
-                        value={[brushSize]}
-                        min={1}
-                        max={50}
-                        step={1}
-                        onValueChange={(value) => setBrushSize(value[0])}
-                        className="mt-1"
-                      />
-                      <Button
-                        onClick={() => setIsBrushSizeOpen(false)}
-                        className="mt-2"
-                      >
-                        Đóng
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Canvas Input */}
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Chọn Vật Thể</h2>
-                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
+                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full">
                   <canvas
                     ref={inputCanvasRef}
                     className="max-w-full cursor-crosshair"
@@ -1054,10 +957,11 @@ export default function ImageInpaintingApp() {
                 )}
               </div>
 
+              {/* Canvas Output */}
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
-                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px]">
-                  <canvas ref={outputCanvasRef} />
+                <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full">
+                  <canvas ref={outputCanvasRef} className="max-w-full" />
                   {isProcessing && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
                       <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
@@ -1140,126 +1044,58 @@ export default function ImageInpaintingApp() {
               </div>
             </div>
 
-            <div className="hidden lg:block">
-              {image && (
-                <div className="flex flex-col gap-4">
-                  <div className="flex gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">...</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={handleResetCanvas}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Tải ảnh mới
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleClearMask}>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Xóa mask
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={saveCanvasState}>
-                          <Save className="h-4 w-4 mr-2" />
-                          Lưu ảnh
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                      onClick={() => setIsBrushSizeOpen(true)}
-                      className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                    >
-                      <Paintbrush className="h-4 w-4 mr-2" />
-                      Kích thước
-                    </Button>
-                    {isBrushSizeOpen && (
-                      <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
-                        <label className="text-sm font-medium text-blue-900">
-                          Kích thước: {brushSize}px
-                        </label>
-                        <Slider
-                          value={[brushSize]}
-                          min={1}
-                          max={50}
-                          step={1}
-                          onValueChange={(value) => setBrushSize(value[0])}
-                          className="mt-1"
-                        />
-                        <Button
-                          onClick={() => setIsBrushSizeOpen(false)}
-                          className="mt-2"
-                        >
-                          Đóng
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+            {/* Controls */}
+            {image && (
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-2 flex-wrap">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">...</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={handleResetCanvas}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Tải ảnh mới
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleClearMask}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Xóa mask
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={saveCanvasState}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Lưu ảnh
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
-                    onClick={handleSubmit}
-                    disabled={!image || isProcessing || !selectedProduct}
-                    className="bg-blue-900 hover:bg-blue-800 text-white"
+                    onClick={() => setIsBrushSizeOpen(true)}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Send className="h-4 w-4 mr-2" />
-                    )}
-                    Xử lý ảnh
+                    <Paintbrush className="h-4 w-4 mr-2" />
+                    Kích thước
                   </Button>
-                </div>
-              )}
-            </div>
-
-            {error && (
-              <Alert variant="destructive" className="mt-2 p-4">
-                <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
-                <AlertDescription className="text-sm">{error}</AlertDescription>
-              </Alert>
-            )}
-          </Card>
-
-          <div className="lg:hidden">
-            <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md">
-              <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
-              <ScrollArea className="h-[300px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
-                <div className="flex flex-col gap-6">
-                  {Object.entries(productGroups).map(([groupName, products]) => (
-                    <div key={groupName} className="flex flex-col gap-2">
-                      <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-wide border-b border-gray-300 pb-1">
-                        {groupName}
-                      </h3>
-                      <div className="flex flex-col gap-2">
-                        {products.map((product) => (
-                          <Button
-                            key={product.name}
-                            onClick={() => handleProductSelect(product.name)}
-                            className={`w-full text-left justify-start py-2 px-4 text-sm transition-all ${
-                              selectedProduct === product.name
-                                ? "bg-blue-900 text-white hover:bg-blue-800"
-                                : "bg-white text-blue-900 hover:bg-gray-100"
-                            }`}
-                            title={product.name}
-                            style={{
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {product.name}
-                          </Button>
-                        ))}
-                      </div>
+                  {isBrushSizeOpen && (
+                    <div className="absolute z-10 bg-white p-4 rounded-md shadow-md">
+                      <label className="text-sm font-medium text-blue-900">
+                        Kích thước: {brushSize}px
+                      </label>
+                      <Slider
+                        value={[brushSize]}
+                        min={1}
+                        max={50}
+                        step={1}
+                        onValueChange={(value) => setBrushSize(value[0])}
+                        className="mt-1"
+                      />
+                      <Button
+                        onClick={() => setIsBrushSizeOpen(false)}
+                        className="mt-2"
+                      >
+                        Đóng
+                      </Button>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </ScrollArea>
-              <div className="mt-auto">
-                <Alert className={`transition-all duration-500 ${isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}`}>
-                  <AlertTitle className="text-blue-900 font-medium">Ý nghĩa sản phẩm</AlertTitle>
-                  <AlertDescription className="text-sm text-gray-700">
-                    {getProductQuote()}
-                  </AlertDescription>
-                </Alert>
-              </div>
-              {image && (
                 <Button
                   onClick={handleSubmit}
                   disabled={!image || isProcessing || !selectedProduct}
@@ -1272,113 +1108,20 @@ export default function ImageInpaintingApp() {
                   )}
                   Xử lý ảnh
                 </Button>
-              )}
-              {inpaintedImage && (
-                <Dialog open={isCustomerInfoOpen} onOpenChange={setIsCustomerInfoOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      onClick={downloadImage}
-                      className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Tải kết quả
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-semibold text-blue-900">
-                        Thông Tin Khách Hàng
-                      </DialogTitle>
-                      <DialogDescription className="text-sm text-gray-600">
-                        Vui lòng điền đầy đủ thông tin dưới đây để tải kết quả xử lý ảnh. Các thông tin này sẽ giúp chúng tôi phục vụ bạn tốt hơn.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleCustomerInfoSubmit} className="space-y-5">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                          Số Điện Thoại <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="phone"
-                          value={customerInfo.phone}
-                          onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                          required
-                          type="tel"
-                          placeholder="Ví dụ: 0901234567"
-                          className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                            error && !/^\d{9,11}$/.test(customerInfo.phone) ? "border-red-500" : ""
-                          }`}
-                        />
-                        <p className="text-xs text-gray-500">
-                          {error && !/^\d{9,11}$/.test(customerInfo.phone)
-                            ? <span className="text-red-500">Số điện thoại phải từ 9-11 chữ số.</span>
-                            : "Vui lòng nhập số điện thoại chính xác (9-11 số)."}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                          Địa Chỉ Email <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="email"
-                          value={customerInfo.email}
-                          onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                          required
-                          type="email"
-                          placeholder="Ví dụ: tencuaban@email.com"
-                          className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                            error && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email) ? "border-red-500" : ""
-                          }`}
-                        />
-                        <p className="text-xs text-gray-500">
-                          {error && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email)
-                            ? <span className="text-red-500">Email không hợp lệ.</span>
-                            : "Email sẽ được sử dụng để liên hệ và gửi thông tin."}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="field" className="text-sm font-medium text-gray-700">
-                          Lĩnh Vực Công Tác <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="field"
-                          value={customerInfo.field}
-                          onChange={(e) => setCustomerInfo({ ...customerInfo, field: e.target.value })}
-                          required
-                          placeholder="Ví dụ: Thiết kế nội thất, Kiến trúc"
-                          className={`w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                            error && !customerInfo.field.trim() ? "border-red-500" : ""
-                          }`}
-                        />
-                        <p className="text-xs text-gray-500">
-                          {error && !customerInfo.field.trim()
-                            ? <span className="text-red-500">Vui lòng nhập lĩnh vực công tác.</span>
-                            : "Thông tin này giúp chúng tôi hiểu rõ hơn về nhu cầu của bạn."}
-                        </p>
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full bg-blue-900 hover:bg-blue-800 text-white font-medium py-2 transition-all duration-200"
-                        disabled={isSubmittingInfo}
-                      >
-                        {isSubmittingInfo ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Đang Xử Lý...
-                          </>
-                        ) : (
-                          "Xác Nhận & Tải Kết Quả"
-                        )}
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </Card>
-          </div>
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive" className="mt-2 p-4">
+                <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
+                <AlertDescription className="text-sm">{error}</AlertDescription>
+              </Alert>
+            )}
+          </Card>
         </div>
 
-        <div className="hidden lg:flex flex-col space-y-4">
+        {/* Product Menu */}
+        <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
             <ScrollArea className="h-[600px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
