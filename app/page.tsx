@@ -121,68 +121,67 @@ export default function ImageInpaintingApp() {
 
     maskCanvasRef.current = document.createElement("canvas");
 
-    if (isMaskModalOpen && maskModalCanvasRef.current && resizedImageData) {
+    if (isMaskModalOpen && maskModalCanvasRef.current && originalImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
-        const aspectRatio = img.width / img.height;
-        let width = img.width;
-        let height = img.height;
+        canvas.width = img.width;
+        canvas.height = img.height;
 
-        // Kích thước logic (tối thiểu 1024px width)
-        if (width < 1024) {
-          width = 1024;
-          height = width / aspectRatio;
-        }
-        canvas.width = width;
-        canvas.height = height;
-
-        // Kích thước hiển thị (giới hạn 90vw, 80vh)
         const maxDisplayWidth = window.innerWidth * 0.9;
         const maxDisplayHeight = window.innerHeight * 0.8;
-        let displayWidth = width;
-        let displayHeight = height;
+        let displayWidth = img.width;
+        let displayHeight = img.height;
+
         if (displayWidth > maxDisplayWidth) {
           displayWidth = maxDisplayWidth;
-          displayHeight = displayWidth / aspectRatio;
+          displayHeight = displayWidth * (img.height / img.width);
         }
         if (displayHeight > maxDisplayHeight) {
           displayHeight = maxDisplayHeight;
-          displayWidth = displayHeight * aspectRatio;
+          displayWidth = displayHeight * (img.width / img.height);
         }
 
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
 
         const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, width, height);
+        ctx.drawImage(img, 0, 0, img.width, img.height);
         redrawCanvas();
       };
       img.onerror = () => setError("Không thể tải ảnh trong modal");
-      img.src = resizedImageData;
+      img.src = originalImageData;
     }
 
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
-  }, [isMaskModalOpen, resizedImageData]);
+  }, [isMaskModalOpen, originalImageData]);
 
-  const resizeImage = (img: HTMLImageElement, minWidth: number): Promise<string> => {
-    return new Promise((resolve) => {
+  const resizeImage = (img: HTMLImageElement): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const minSize = 300;
+      const targetWidth = 1152;
+
+      if (img.width < minSize || img.height < minSize) {
+        reject(new Error("Ảnh quá nhỏ, vui lòng tải ảnh có kích thước tối thiểu 300px ở mỗi chiều"));
+        return;
+      }
+
       const aspectRatio = img.width / img.height;
-      let canvasWidth = img.width;
-      let canvasHeight = img.height;
+      let newWidth = img.width;
+      let newHeight = img.height;
 
-      if (canvasWidth < minWidth) {
-        canvasWidth = minWidth;
-        canvasHeight = canvasWidth / aspectRatio;
+      if (newWidth > targetWidth) {
+        newWidth = targetWidth;
+        newHeight = newWidth / aspectRatio;
       }
 
       const canvas = document.createElement("canvas");
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
+      canvas.width = newWidth;
+      canvas.height = newHeight;
       const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
       const dataUrl = canvas.toDataURL("image/png");
       canvas.remove();
       resolve(dataUrl);
@@ -202,18 +201,11 @@ export default function ImageInpaintingApp() {
       const img = new window.Image();
       img.onload = async () => {
         try {
-          const tempCanvas = document.createElement("canvas");
-          tempCanvas.width = img.width;
-          tempCanvas.height = img.height;
-          const ctx = tempCanvas.getContext("2d");
-          if (!ctx) throw new Error("Không thể tạo context");
-          ctx.drawImage(img, 0, 0);
-          setOriginalImageData(tempCanvas.toDataURL("image/png"));
-          tempCanvas.remove();
-
-          const resizedData = await resizeImage(img, 1024);
-          setResizedImageData(resizedData);
           setImage(img);
+          setOriginalImageData(event.target?.result as string);
+
+          const resizedData = await resizeImage(img);
+          setResizedImageData(resizedData);
           drawImageOnCanvas(resizedData);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
@@ -452,9 +444,9 @@ export default function ImageInpaintingApp() {
       if (isMaskModalOpen && modalCanvas) {
         const modalCtx = modalCanvas.getContext("2d")!;
         modalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
-        modalCtx.drawImage(img, 0, 0);
+        modalCtx.drawImage(img, 0, 0, modalCanvas.width, modalCanvas.height);
         modalCtx.globalAlpha = maskOpacity;
-        modalCtx.drawImage(maskCanvas, 0, 0);
+        modalCtx.drawImage(maskCanvas, 0, 0, modalCanvas.width, modalCanvas.height);
         modalCtx.globalAlpha = 1.0;
       }
     };
@@ -474,10 +466,22 @@ export default function ImageInpaintingApp() {
 
     try {
       const maskImage = await getCombinedImage();
+
+      let finalImageData = originalImageData;
+      let finalMaskData = maskImage;
+
+      if (image.width > 1152) {
+        finalImageData = await resizeImage(image);
+        const maskImg = new Image();
+        maskImg.src = maskImage;
+        await new Promise((resolve) => (maskImg.onload = resolve));
+        finalMaskData = await resizeImage(maskImg);
+      }
+
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
 
-      const resultUrl = await processInpainting(originalImageData, productImageBase64, maskImage);
+      const resultUrl = await processInpainting(finalImageData, productImageBase64, finalMaskData);
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
