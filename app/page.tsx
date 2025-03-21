@@ -25,19 +25,19 @@ type Path = {
 
 const productGroups = {
   STANDARD: [
-    { name: "C1012 - Glacier White", quote: "Glacier với nền trắng kết hợp với những hạt thạch anh kích thước nhỏ..." },
-    // Các sản phẩm khác giữ nguyên như bạn cung cấp
+    { name: "C1012 - Glacier White", quote: "Glacier với nền trắng..." },
+    // Giữ nguyên như bạn cung cấp
   ],
   DELUXE: [
-    { name: "C2103 - Onyx Carrara", quote: "Onyx Carrara lấy cảm hứng từ dòng đá cẩm thạch Carrara..." },
+    { name: "C2103 - Onyx Carrara", quote: "Onyx Carrara lấy cảm hứng..." },
     // Các sản phẩm khác
   ],
   LUXURY: [
-    { name: "C1102 - Super White", quote: "Super White mang tông màu trắng sáng đặc biệt..." },
+    { name: "C1102 - Super White", quote: "Super White mang tông..." },
     // Các sản phẩm khác
   ],
   "SUPER LUXURY": [
-    { name: "C4147 - Mont", quote: "Mont với những đường vân dày mềm mại..." },
+    { name: "C4147 - Mont", quote: "Mont với những đường vân..." },
     // Các sản phẩm khác
   ],
 };
@@ -100,29 +100,29 @@ export default function ImageInpaintingApp() {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
+        const maxWidth = window.innerWidth;
+        const maxHeight = window.innerHeight * 0.9;
+        let displayWidth = img.width;
+        let displayHeight = img.height;
+
+        if (displayWidth > maxWidth) {
+          displayWidth = maxWidth;
+          displayHeight = displayWidth * (img.height / img.width);
+        }
+        if (displayHeight > maxHeight) {
+          displayHeight = maxHeight;
+          displayWidth = displayHeight * (img.width / img.height);
+        }
+
         canvas.width = img.width;
         canvas.height = img.height;
+        canvas.style.width = `${displayWidth}px`;
+        canvas.style.height = `${displayHeight}px`;
+
         if (maskCanvasRef.current) {
           maskCanvasRef.current.width = img.width;
           maskCanvasRef.current.height = img.height;
         }
-
-        const maxDisplayWidth = window.innerWidth; // 100% chiều rộng màn hình
-        const maxDisplayHeight = window.innerHeight * 0.9; // 90% chiều cao màn hình
-        let displayWidth = img.width;
-        let displayHeight = img.height;
-
-        if (displayWidth > maxDisplayWidth) {
-          displayWidth = maxDisplayWidth;
-          displayHeight = displayWidth * (img.height / img.width);
-        }
-        if (displayHeight > maxDisplayHeight) {
-          displayHeight = maxDisplayHeight;
-          displayWidth = displayHeight * (img.width / img.height);
-        }
-
-        canvas.style.width = `${displayWidth}px`;
-        canvas.style.height = `${displayHeight}px`;
 
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, img.width, img.height);
@@ -183,9 +183,9 @@ export default function ImageInpaintingApp() {
         try {
           setImage(img);
           setOriginalImageData(event.target?.result as string);
-          drawImageOnCanvas(event.target?.result as string);
           const resizedData = await resizeImage(img);
           setResizedImageData(resizedData);
+          drawImageOnCanvas(resizedData); // Dùng ảnh resize thay vì gốc
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
           drawPlaceholder(inputCanvasRef.current);
@@ -208,9 +208,10 @@ export default function ImageInpaintingApp() {
       inputCanvas.height = img.height;
       maskCanvas.width = img.width;
       maskCanvas.height = img.height;
+
       const inputCtx = inputCanvas.getContext("2d")!;
       inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
-      inputCtx.drawImage(img, 0, 0);
+      inputCtx.drawImage(img, 0, 0, img.width, img.height);
       redrawCanvas();
     };
     img.onerror = () => setError("Không thể vẽ ảnh lên canvas");
@@ -226,7 +227,7 @@ export default function ImageInpaintingApp() {
     placeholder.onload = () => {
       canvas.width = placeholder.width;
       canvas.height = placeholder.height;
-      ctx.drawImage(placeholder, 0, 0);
+      ctx.drawImage(placeholder, 0, 0, canvas.width, canvas.height);
     };
   };
 
@@ -415,15 +416,15 @@ export default function ImageInpaintingApp() {
     const inputCanvas = inputCanvasRef.current;
     const modalCanvas = maskModalCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
-    if (!inputCanvas || !maskCanvas || !originalImageData) return;
+    if (!inputCanvas || !maskCanvas || !resizedImageData) return;
 
     const img = new Image();
     img.onload = () => {
       const inputCtx = inputCanvas.getContext("2d")!;
       inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
-      inputCtx.drawImage(img, 0, 0);
+      inputCtx.drawImage(img, 0, 0, inputCanvas.width, inputCanvas.height);
       inputCtx.globalAlpha = maskOpacity;
-      inputCtx.drawImage(maskCanvas, 0, 0);
+      inputCtx.drawImage(maskCanvas, 0, 0, inputCanvas.width, inputCanvas.height);
       inputCtx.globalAlpha = 1.0;
 
       if (isMaskModalOpen && modalCanvas) {
@@ -436,7 +437,7 @@ export default function ImageInpaintingApp() {
       }
     };
     img.onerror = () => setError("Không thể cập nhật preview");
-    img.src = originalImageData;
+    img.src = resizedImageData; // Dùng ảnh resize thay vì gốc
   };
 
   const getCombinedImage = async (): Promise<string> => {
@@ -506,17 +507,10 @@ export default function ImageInpaintingApp() {
     setError(null);
 
     try {
-      let finalImageData = originalImageData;
-      let finalMaskData = await getCombinedImage();
+      const maskImage = await getCombinedImage();
 
-      // Nếu ảnh gốc lớn hơn 1152px, resize cả ảnh và mask
-      if (image.width > 1152) {
-        finalImageData = await resizeImage(image, 1152);
-        const maskImg = new Image();
-        maskImg.src = finalMaskData;
-        await new Promise((resolve) => (maskImg.onload = resolve));
-        finalMaskData = await resizeImage(maskImg, 1152);
-      }
+      let finalImageData = resizedImageData; // Dùng ảnh resize
+      let finalMaskData = maskImage;
 
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
@@ -532,7 +526,7 @@ export default function ImageInpaintingApp() {
         if (outputCanvas) {
           outputCanvas.width = img.width;
           outputCanvas.height = img.height;
-          outputCanvas.getContext("2d")!.drawImage(img, 0, 0);
+          outputCanvas.getContext("2d")!.drawImage(img, 0, 0, img.width, img.height);
         }
       };
       img.src = watermarkedImageUrl;
