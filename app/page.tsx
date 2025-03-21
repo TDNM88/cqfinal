@@ -107,42 +107,19 @@ export default function ImageInpaintingApp() {
   const { processInpainting } = useInpainting();
 
   // Khởi tạo canvas với placeholder
-  useEffect(() => {
-    const initCanvasWithPlaceholder = (canvas: HTMLCanvasElement | null) => {
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      const placeholder = new Image();
-      placeholder.src = "/logo2048.jpg";
-      placeholder.onload = () => {
-        canvas.width = placeholder.width;
-        canvas.height = placeholder.height;
-        ctx.drawImage(placeholder, 0, 0, canvas.width, canvas.height);
-      };
-      placeholder.onerror = () => {
-        ctx.fillStyle = "#F3F4F6";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      };
-    };
-
-    initCanvasWithPlaceholder(inputCanvasRef.current);
-    initCanvasWithPlaceholder(outputCanvasRef.current);
-
-    maskCanvasRef.current = document.createElement("canvas");
-
+    useEffect(() => {
     if (isMaskModalOpen && maskModalCanvasRef.current && originalImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
       img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-
-        const maxDisplayWidth = window.innerWidth * 0.95;
-        const maxDisplayHeight = window.innerHeight * 0.95;
+        // Calculate display size based on the original ratio
+        const maxDisplayWidth = window.innerWidth * 0.95; // 95% of screen width
+        const maxDisplayHeight = window.innerHeight * 0.95; // 95% of screen height
+  
         let displayWidth = img.width;
         let displayHeight = img.height;
-
+  
+        // Adjust size if the image is too large
         if (displayWidth > maxDisplayWidth) {
           displayWidth = maxDisplayWidth;
           displayHeight = displayWidth * (img.height / img.width);
@@ -151,21 +128,23 @@ export default function ImageInpaintingApp() {
           displayHeight = maxDisplayHeight;
           displayWidth = displayHeight * (img.width / img.height);
         }
-
+  
+        // Update canvas size
+        canvas.width = img.width;
+        canvas.height = img.height;
+  
+        // Display image with adjusted size
+        const ctx = canvas.getContext("2d")!;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+  
+        // Update CSS to display canvas at the correct ratio
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
-
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-        redrawCanvas();
       };
       img.onerror = () => setError("Không thể tải ảnh trong modal");
       img.src = originalImageData;
     }
-
-    return () => {
-      if (maskCanvasRef.current) maskCanvasRef.current.remove();
-    };
   }, [isMaskModalOpen, originalImageData]);
 
   // Resize ảnh
@@ -796,11 +775,11 @@ export default function ImageInpaintingApp() {
                   <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
                     <DialogTrigger asChild>
                       <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
-                        <Paintbrush className="h-4 w-4 mr-2" />
+                        <Paintbrush className="h-5 w-5" />
                         Vẽ Mask
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-[fit-content] max-h-[fit-content] overflow-hidden p-6 bg-white rounded-lg">
+                    <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full overflow-auto p-6 bg-white rounded-lg">
                       <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-blue-900">
                           Vẽ Mask
@@ -814,7 +793,7 @@ export default function ImageInpaintingApp() {
                           <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
                             <canvas
                               ref={maskModalCanvasRef}
-                              className="max-w-full cursor-crosshair"
+                              className="max-w-full max-h-[80vh] cursor-crosshair"
                               onMouseDown={startDrawing}
                               onMouseMove={draw}
                               onMouseUp={stopDrawing}
