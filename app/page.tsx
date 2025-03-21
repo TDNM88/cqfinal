@@ -3,18 +3,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Upload, Download, Paintbrush, Loader2, Info, Send, RefreshCw, Save } from "lucide-react";
+import { Upload, Download, Paintbrush, Loader2, Send, RefreshCw, Save } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useInpainting } from "@/hooks/useInpainting";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -23,8 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 type Path = {
   points: { x: number; y: number }[];
@@ -87,13 +78,10 @@ const productGroups = {
 };
 
 const products = Object.fromEntries(
-  Object.values(productGroups).flat().map((item) => [
-    item.name,
-    `/product_images/${item.name.split(" - ")[0]}.jpg`,
-  ])
+  Object.values(productGroups)
+    .flat()
+    .map((item) => [item.name, `/product_images/${item.name.split(" - ")[0]}.jpg`])
 );
-
-export const dynamic = "force-dynamic";
 
 export default function ImageInpaintingApp() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -110,13 +98,6 @@ export default function ImageInpaintingApp() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [paths, setPaths] = useState<Path[]>([]);
   const [isMaskModalOpen, setIsMaskModalOpen] = useState(false);
-  const [isCustomerInfoOpen, setIsCustomerInfoOpen] = useState(false);
-  const [customerInfo, setCustomerInfo] = useState({
-    phone: "",
-    email: "",
-    field: "",
-  });
-  const [isSubmittingInfo, setIsSubmittingInfo] = useState(false);
 
   const inputCanvasRef = useRef<HTMLCanvasElement>(null);
   const outputCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -137,9 +118,9 @@ export default function ImageInpaintingApp() {
     };
     initCanvas(inputCanvasRef.current);
     initCanvas(outputCanvasRef.current);
-  
+
     maskCanvasRef.current = document.createElement("canvas");
-  
+
     if (isMaskModalOpen && maskModalCanvasRef.current && resizedImageData) {
       const canvas = maskModalCanvasRef.current;
       const img = new Image();
@@ -147,19 +128,32 @@ export default function ImageInpaintingApp() {
         const aspectRatio = img.width / img.height;
         let width = img.width;
         let height = img.height;
-  
+
+        // Kích thước logic (tối thiểu 1024px width)
         if (width < 1024) {
           width = 1024;
           height = width / aspectRatio;
         }
-  
-        // Set kích thước logic
         canvas.width = width;
         canvas.height = height;
-        // Set kích thước hiển thị
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-  
+
+        // Kích thước hiển thị (giới hạn 90vw, 80vh)
+        const maxDisplayWidth = window.innerWidth * 0.9;
+        const maxDisplayHeight = window.innerHeight * 0.8;
+        let displayWidth = width;
+        let displayHeight = height;
+        if (displayWidth > maxDisplayWidth) {
+          displayWidth = maxDisplayWidth;
+          displayHeight = displayWidth / aspectRatio;
+        }
+        if (displayHeight > maxDisplayHeight) {
+          displayHeight = maxDisplayHeight;
+          displayWidth = displayHeight * aspectRatio;
+        }
+
+        canvas.style.width = `${displayWidth}px`;
+        canvas.style.height = `${displayHeight}px`;
+
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, width, height);
         redrawCanvas();
@@ -167,7 +161,7 @@ export default function ImageInpaintingApp() {
       img.onerror = () => setError("Không thể tải ảnh trong modal");
       img.src = resizedImageData;
     }
-  
+
     return () => {
       if (maskCanvasRef.current) maskCanvasRef.current.remove();
     };
@@ -217,12 +211,10 @@ export default function ImageInpaintingApp() {
           setOriginalImageData(tempCanvas.toDataURL("image/png"));
           tempCanvas.remove();
 
-          const minWidth = 1024;
-          const resizedData = await resizeImage(img, minWidth);
+          const resizedData = await resizeImage(img, 1024);
           setResizedImageData(resizedData);
           setImage(img);
-
-          drawImageOnCanvas(resizedData); // Gọi hàm vẽ ảnh
+          drawImageOnCanvas(resizedData);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Không thể xử lý ảnh");
         }
@@ -241,7 +233,6 @@ export default function ImageInpaintingApp() {
 
     const img = new Image();
     img.onload = () => {
-      // Đảm bảo kích thước canvas khớp với ảnh
       inputCanvas.width = img.width;
       inputCanvas.height = img.height;
       maskCanvas.width = img.width;
@@ -255,8 +246,8 @@ export default function ImageInpaintingApp() {
       }
 
       const inputCtx = inputCanvas.getContext("2d")!;
-      inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height); // Xóa canvas trước khi vẽ
-      inputCtx.drawImage(img, 0, 0, img.width, img.height); // Vẽ ảnh lên canvas
+      inputCtx.clearRect(0, 0, inputCanvas.width, inputCanvas.height);
+      inputCtx.drawImage(img, 0, 0, img.width, img.height);
     };
     img.onerror = () => setError("Không thể vẽ ảnh lên canvas");
     img.src = resizedData;
@@ -270,8 +261,8 @@ export default function ImageInpaintingApp() {
     setIsErasing(isErasingNow);
 
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) * (maskModalCanvasRef.current.width / rect.width);
+    const y = (e.clientY - rect.top) * (maskModalCanvasRef.current.height / rect.height);
 
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     maskCtx.lineCap = "round";
@@ -284,13 +275,8 @@ export default function ImageInpaintingApp() {
       maskCtx.lineWidth = brushSize;
       maskCtx.beginPath();
       maskCtx.moveTo(x, y);
-
-      setPaths((prev) => [
-        ...prev,
-        { points: [{ x, y }], color: "white", width: brushSize },
-      ]);
+      setPaths((prev) => [...prev, { points: [{ x, y }], color: "white", width: brushSize }]);
     }
-
     updateMaskPreview();
   };
 
@@ -298,8 +284,8 @@ export default function ImageInpaintingApp() {
     if (!isDrawing || !maskModalCanvasRef.current || !maskCanvasRef.current) return;
 
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) * (maskModalCanvasRef.current.width / rect.width);
+    const y = (e.clientY - rect.top) * (maskModalCanvasRef.current.height / rect.height);
 
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
 
@@ -308,29 +294,26 @@ export default function ImageInpaintingApp() {
     } else {
       const currentPath = paths[paths.length - 1];
       const lastPoint = currentPath.points[currentPath.points.length - 1];
-
       maskCtx.strokeStyle = "white";
       maskCtx.lineWidth = brushSize;
       maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
       maskCtx.stroke();
       maskCtx.beginPath();
       maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-
       setPaths((prev) => {
         const newPaths = [...prev];
         newPaths[newPaths.length - 1].points.push({ x, y });
         return newPaths;
       });
     }
-
     updateMaskPreview();
   };
 
   const stopDrawing = () => {
     if (!maskCanvasRef.current) return;
-    const maskCtx = maskCanvasRef.current.getContext("2d")!;
     setIsDrawing(false);
     setIsErasing(false);
+    const maskCtx = maskCanvasRef.current.getContext("2d")!;
     if (!isErasing) maskCtx.closePath();
     updateMaskPreview();
   };
@@ -343,8 +326,8 @@ export default function ImageInpaintingApp() {
 
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
     const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
+    const x = (touch.clientX - rect.left) * (maskModalCanvasRef.current.width / rect.width);
+    const y = (touch.clientY - rect.top) * (maskModalCanvasRef.current.height / rect.height);
 
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
     maskCtx.lineCap = "round";
@@ -357,13 +340,8 @@ export default function ImageInpaintingApp() {
       maskCtx.lineWidth = brushSize;
       maskCtx.beginPath();
       maskCtx.moveTo(x, y);
-
-      setPaths((prev) => [
-        ...prev,
-        { points: [{ x, y }], color: "white", width: brushSize },
-      ]);
+      setPaths((prev) => [...prev, { points: [{ x, y }], color: "white", width: brushSize }]);
     }
-
     updateMaskPreview();
   };
 
@@ -372,8 +350,8 @@ export default function ImageInpaintingApp() {
 
     const rect = maskModalCanvasRef.current.getBoundingClientRect();
     const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
+    const x = (touch.clientX - rect.left) * (maskModalCanvasRef.current.width / rect.width);
+    const y = (touch.clientY - rect.top) * (maskModalCanvasRef.current.height / rect.height);
 
     const maskCtx = maskCanvasRef.current.getContext("2d")!;
 
@@ -382,51 +360,44 @@ export default function ImageInpaintingApp() {
     } else {
       const currentPath = paths[paths.length - 1];
       const lastPoint = currentPath.points[currentPath.points.length - 1];
-
       maskCtx.strokeStyle = "white";
       maskCtx.lineWidth = brushSize;
       maskCtx.quadraticCurveTo(lastPoint.x, lastPoint.y, (x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
       maskCtx.stroke();
       maskCtx.beginPath();
       maskCtx.moveTo((x + lastPoint.x) / 2, (y + lastPoint.y) / 2);
-
       setPaths((prev) => {
         const newPaths = [...prev];
         newPaths[newPaths.length - 1].points.push({ x, y });
         return newPaths;
       });
     }
-
     updateMaskPreview();
   };
 
   const stopDrawingTouch = () => {
     if (!maskCanvasRef.current) return;
-    const maskCtx = maskCanvasRef.current.getContext("2d")!;
     setIsDrawing(false);
     setIsErasing(false);
+    const maskCtx = maskCanvasRef.current.getContext("2d")!;
     if (!eraseMode) maskCtx.closePath();
     updateMaskPreview();
   };
 
   const eraseMaskAtPosition = (x: number, y: number) => {
     const eraseRadius = brushSize / 2;
-
-    setPaths((prevPaths) => {
-      const updatedPaths = prevPaths.map((path) => {
-        if (path.color !== "white") return path;
-
-        const filteredPoints = path.points.filter((point) => {
-          const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
-          return distance > eraseRadius;
-        });
-
-        return { ...path, points: filteredPoints };
-      });
-
-      return updatedPaths.filter((path) => path.points.length > 0);
-    });
-
+    setPaths((prevPaths) =>
+      prevPaths
+        .map((path) => {
+          if (path.color !== "white") return path;
+          const filteredPoints = path.points.filter((point) => {
+            const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
+            return distance > eraseRadius;
+          });
+          return { ...path, points: filteredPoints };
+        })
+        .filter((path) => path.points.length > 0)
+    );
     redrawCanvas();
   };
 
@@ -436,13 +407,11 @@ export default function ImageInpaintingApp() {
 
     const maskCtx = maskCanvas.getContext("2d")!;
     maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-
     maskCtx.lineCap = "round";
     maskCtx.lineJoin = "round";
 
     paths.forEach((path) => {
       if (path.points.length === 0) return;
-
       maskCtx.beginPath();
       maskCtx.strokeStyle = path.color;
       maskCtx.lineWidth = path.width;
@@ -462,7 +431,6 @@ export default function ImageInpaintingApp() {
         maskCtx.stroke();
       }
     });
-
     updateMaskPreview();
   };
 
@@ -492,181 +460,6 @@ export default function ImageInpaintingApp() {
     };
     img.onerror = () => setError("Không thể cập nhật preview");
     img.src = resizedImageData;
-  };
-
-  const deletePathAtPosition = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = maskModalCanvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    let closestPathIndex = -1;
-    let minDistance = Infinity;
-
-    paths.forEach((path, index) => {
-      path.points.forEach((point) => {
-        const distance = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestPathIndex = index;
-        }
-      });
-    });
-
-    if (closestPathIndex !== -1 && minDistance < 10) {
-      setPaths((prev) => prev.filter((_, i) => i !== closestPathIndex));
-      redrawCanvas();
-    }
-  };
-
-  const handleProductSelect = (productName: string) => {
-    if (!products[productName as keyof typeof products]) {
-      setError("Sản phẩm không hợp lệ");
-      return;
-    }
-    setSelectedProduct(productName);
-    setError(null);
-  };
-
-  const saveCanvasState = () => {
-    const canvas = inputCanvasRef.current;
-    if (!canvas) return;
-    const dataURL = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.download = "canvas-state.png";
-    link.href = dataURL;
-    link.click();
-    link.remove();
-  };
-
-  const handleResetCanvas = () => {
-    setImage(null);
-    setPaths([]);
-    setInpaintedImage(null);
-    setError(null);
-    setOriginalImageData("");
-    setResizedImageData("");
-    setSelectedProduct(null);
-
-    const inputCanvas = inputCanvasRef.current;
-    if (inputCanvas) {
-      const ctx = inputCanvas.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = "#F3F4F6";
-        ctx.fillRect(0, 0, inputCanvas.width, inputCanvas.height);
-      }
-    }
-
-    const outputCanvas = outputCanvasRef.current;
-    if (outputCanvas) {
-      const ctx = outputCanvas.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = "#F3F4F6";
-        ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
-      }
-    }
-  };
-
-  const handleClearMask = () => {
-    setPaths([]);
-    redrawCanvas();
-  };
-
-  const convertImageToBase64 = (url: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0);
-        const base64 = canvas.toDataURL("image/png");
-        canvas.remove();
-        resolve(base64);
-      };
-      img.onerror = () => reject(new Error("Không thể tải ảnh sản phẩm"));
-      img.src = url;
-    });
-  };
-
-  const addWatermark = async (imageData: string): Promise<string> => {
-    const img = new Image();
-    img.src = imageData;
-    await new Promise((resolve) => (img.onload = resolve));
-    const logo = new Image();
-    logo.src = "/logo.png";
-    await new Promise((resolve) => (logo.onload = resolve));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(img, 0, 0);
-    const logoSize = img.width * 0.2;
-    ctx.drawImage(logo, img.width - logoSize - 10, img.height - logoSize - 10, logoSize, logoSize);
-    const result = canvas.toDataURL("image/png");
-    canvas.remove();
-    return result;
-  };
-
-  const getCombinedImage = async (): Promise<string> => {
-    if (!image || !maskCanvasRef.current) throw new Error("Không tìm thấy ảnh hoặc mask");
-
-    const originalMaskCanvas = document.createElement("canvas");
-    originalMaskCanvas.width = image.width;
-    originalMaskCanvas.height = image.height;
-    const originalMaskCtx = originalMaskCanvas.getContext("2d")!;
-
-    const scaleX = image.width / maskCanvasRef.current.width;
-    const scaleY = image.height / maskCanvasRef.current.height;
-
-    originalMaskCtx.lineCap = "round";
-    originalMaskCtx.lineJoin = "round";
-
-    paths.forEach((path) => {
-      if (path.points.length === 0) return;
-
-      originalMaskCtx.beginPath();
-      originalMaskCtx.strokeStyle = path.color;
-      originalMaskCtx.lineWidth = path.width * scaleX;
-
-      if (path.points.length === 1) {
-        const point = path.points[0];
-        originalMaskCtx.arc(point.x * scaleX, point.y * scaleY, (path.width * scaleX) / 2, 0, Math.PI * 2);
-        originalMaskCtx.fillStyle = path.color;
-        originalMaskCtx.fill();
-      } else {
-        originalMaskCtx.moveTo(path.points[0].x * scaleX, path.points[0].y * scaleY);
-        for (let i = 0; i < path.points.length - 1; i++) {
-          const xc = ((path.points[i].x + path.points[i + 1].x) / 2) * scaleX;
-          const yc = ((path.points[i].y + path.points[i + 1].y) / 2) * scaleY;
-          originalMaskCtx.quadraticCurveTo(path.points[i].x * scaleX, path.points[i].y * scaleY, xc, yc);
-        }
-        originalMaskCtx.stroke();
-      }
-    });
-
-    const maskCanvasBW = document.createElement("canvas");
-    maskCanvasBW.width = image.width;
-    maskCanvasBW.height = image.height;
-    const maskCtxBW = maskCanvasBW.getContext("2d")!;
-
-    const maskImageData = originalMaskCtx.getImageData(0, 0, image.width, image.height);
-    const maskData = maskImageData.data;
-
-    for (let i = 0; i < maskData.length; i += 4) {
-      const alpha = maskData[i + 3];
-      maskCtxBW.fillStyle = alpha > 0 ? "white" : "black";
-      maskCtxBW.fillRect((i / 4) % image.width, Math.floor((i / 4) / image.width), 1, 1);
-    }
-
-    const result = maskCanvasBW.toDataURL("image/png");
-    maskCanvasBW.remove();
-    originalMaskCanvas.remove();
-    return result;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -710,80 +503,79 @@ export default function ImageInpaintingApp() {
     }
   };
 
-  const downloadImage = () => {
-    if (!inpaintedImage) return;
-    if (customerInfo.phone && customerInfo.email && customerInfo.field) {
-      const link = document.createElement("a");
-      link.download = "ket-qua-xu-ly.png";
-      link.href = inpaintedImage;
-      link.click();
-      link.remove();
-    } else {
-      setIsCustomerInfoOpen(true);
+  const getCombinedImage = async (): Promise<string> => {
+    if (!image || !maskCanvasRef.current) throw new Error("Không tìm thấy ảnh hoặc mask");
+    const maskCanvasBW = document.createElement("canvas");
+    maskCanvasBW.width = image.width;
+    maskCanvasBW.height = image.height;
+    const maskCtxBW = maskCanvasBW.getContext("2d")!;
+    maskCtxBW.drawImage(maskCanvasRef.current, 0, 0);
+
+    const maskImageData = maskCtxBW.getImageData(0, 0, image.width, image.height);
+    const maskData = maskImageData.data;
+
+    for (let i = 0; i < maskData.length; i += 4) {
+      const alpha = maskData[i + 3];
+      maskCtxBW.fillStyle = alpha > 0 ? "white" : "black";
+      maskCtxBW.fillRect((i / 4) % image.width, Math.floor((i / 4) / image.width), 1, 1);
     }
+
+    const result = maskCanvasBW.toDataURL("image/png");
+    maskCanvasBW.remove();
+    return result;
   };
 
-  const handleCustomerInfoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingInfo(true);
-
-    const phoneRegex = /^\d{9,11}$/;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!phoneRegex.test(customerInfo.phone)) {
-      setError("Số điện thoại phải từ 9-11 chữ số.");
-      setIsSubmittingInfo(false);
-      return;
-    }
-    if (!emailRegex.test(customerInfo.email)) {
-      setError("Email không hợp lệ.");
-      setIsSubmittingInfo(false);
-      return;
-    }
-    if (!customerInfo.field.trim()) {
-      setError("Vui lòng nhập lĩnh vực công tác.");
-      setIsSubmittingInfo(false);
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/customer-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: customerInfo.phone,
-          email: customerInfo.email,
-          field: customerInfo.field,
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      if (!response.ok) throw new Error("Lỗi khi gửi thông tin khách hàng");
-      setError(null);
-      downloadImage();
-      setIsCustomerInfoOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể lưu thông tin");
-    } finally {
-      setIsSubmittingInfo(false);
-    }
+  const convertImageToBase64 = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0);
+        const base64 = canvas.toDataURL("image/png");
+        canvas.remove();
+        resolve(base64);
+      };
+      img.onerror = () => reject(new Error("Không thể tải ảnh sản phẩm"));
+      img.src = url;
+    });
   };
 
-  const getProductQuote = () => {
-    if (!selectedProduct) return "Vui lòng chọn một sản phẩm để xem thông tin.";
-    const allProducts = Object.values(productGroups).flat();
-    const product = allProducts.find((p) => p.name === selectedProduct);
-    return product ? product.quote : "Không tìm thấy thông tin sản phẩm.";
+  const addWatermark = async (imageData: string): Promise<string> => {
+    const img = new Image();
+    img.src = imageData;
+    await new Promise((resolve) => (img.onload = resolve));
+    const logo = new Image();
+    logo.src = "/logo.png";
+    await new Promise((resolve) => (logo.onload = resolve));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const logoSize = img.width * 0.2;
+    ctx.drawImage(logo, img.width - logoSize - 10, img.height - logoSize - 10, logoSize, logoSize);
+    const result = canvas.toDataURL("image/png");
+    canvas.remove();
+    return result;
+  };
+
+  const handleClearMask = () => {
+    setPaths([]);
+    redrawCanvas();
   };
 
   return (
-    <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col animate-fade-in">
+    <div className="container mx-auto py-8 px-4 font-sans min-h-screen flex flex-col">
       <h1 className="text-3xl font-bold text-center mb-8 text-blue-800">CaslaQuartz AI</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
-            {/* Phần mobile */}
             <div className="lg:hidden">
               <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
                 <canvas ref={inputCanvasRef} className="max-w-full max-h-full object-contain" />
@@ -808,9 +600,8 @@ export default function ImageInpaintingApp() {
                   </div>
                 )}
                 {isProcessing && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                    <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
-                    <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-200/80">
+                    <Loader2 className="h-12 w-12 text-blue-900 animate-spin" />
                   </div>
                 )}
               </div>
@@ -830,63 +621,82 @@ export default function ImageInpaintingApp() {
                   </Button>
                   <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
                     <DialogTrigger asChild>
-                      <Button
-                        className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                        title="Vẽ Mask"
-                      >
+                      <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
                         <Paintbrush className="h-5 w-5" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[1024px] max-h-[80vh] overflow-auto">
+                    <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-hidden p-6 bg-white rounded-lg">
                       <DialogHeader>
-                        <DialogTitle className="text-xl font-semibold text-blue-900">Vẽ Mask</DialogTitle>
+                        <DialogTitle className="text-xl font-semibold text-blue-900">
+                          Vẽ Mask
+                        </DialogTitle>
                         <DialogDescription className="text-sm text-gray-600">
-                          Dùng chuột trái để vẽ mask (màu trắng), chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa bên dưới.
+                          Dùng chuột trái để vẽ mask, chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 overflow-auto">
-                        <canvas
-                          ref={maskModalCanvasRef}
-                          className="max-w-full cursor-crosshair"
-                          onMouseDown={startDrawing}
-                          onMouseMove={draw}
-                          onMouseUp={stopDrawing}
-                          onMouseLeave={stopDrawing}
-                          onContextMenu={(e) => e.preventDefault()}
-                          onTouchStart={startDrawingTouch}
-                          onTouchMove={drawTouch}
-                          onTouchEnd={stopDrawingTouch}
-                          onClick={deletePathAtPosition}
-                        />
-                      </div>
-                      <div className="flex justify-between mt-4">
-                        <div className="flex gap-2 items-center">
-                          <label className="text-sm font-medium text-blue-900">
-                            Kích thước: {brushSize}px
-                          </label>
-                          <Slider
-                            value={[brushSize]}
-                            min={1}
-                            max={50}
-                            step={1}
-                            onValueChange={(value) => setBrushSize(value[0])}
-                            className="w-32"
-                          />
+                      <div className="flex flex-col gap-6">
+                        <div className="flex items-center justify-center">
+                          <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
+                            <canvas
+                              ref={maskModalCanvasRef}
+                              className="max-w-full cursor-crosshair"
+                              onMouseDown={startDrawing}
+                              onMouseMove={draw}
+                              onMouseUp={stopDrawing}
+                              onMouseLeave={stopDrawing}
+                              onContextMenu={(e) => e.preventDefault()}
+                              onTouchStart={startDrawingTouch}
+                              onTouchMove={drawTouch}
+                              onTouchEnd={stopDrawingTouch}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center flex-col md:flex-row gap-3">
+                          <div className="flex items-center gap-3">
+                            <label className="text-sm font-medium text-blue-900">
+                              Kích thước: {brushSize}px
+                            </label>
+                            <Slider
+                              value={[brushSize]}
+                              min={1}
+                              max={50}
+                              step={1}
+                              onValueChange={(value) => setBrushSize(value[0])}
+                              className="w-32"
+                            />
+                            <Button
+                              onClick={() => setEraseMode(!eraseMode)}
+                              className={`${
+                                eraseMode
+                                  ? "bg-red-500 hover:bg-red-600"
+                                  : "bg-blue-900 hover:bg-blue-800"
+                              } text-white`}
+                            >
+                              {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
+                            </Button>
+                          </div>
                           <Button
-                            onClick={() => setEraseMode(!eraseMode)}
-                            className={`ml-4 ${eraseMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-900 hover:bg-blue-800"} text-white`}
+                            onClick={() => setIsMaskModalOpen(false)}
+                            className="bg-blue-900 hover:bg-blue-800 text-white"
                           >
-                            {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
+                            Xác nhận
                           </Button>
                         </div>
-                        <Button onClick={() => setIsMaskModalOpen(false)} className="bg-blue-900 hover:bg-blue-800 text-white">
-                          Hoàn tất
-                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
                   <Button
-                    onClick={saveCanvasState}
+                    onClick={() => {
+                      const canvas = inputCanvasRef.current;
+                      if (canvas) {
+                        const url = canvas.toDataURL("image/png");
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = "canvas.png";
+                        link.click();
+                        link.remove();
+                      }
+                    }}
                     className="bg-gray-200 hover:bg-gray-300 text-blue-900"
                   >
                     <Save className="h-5 w-5" />
@@ -895,8 +705,7 @@ export default function ImageInpaintingApp() {
               )}
             </div>
 
-            {/* Phần desktop */}
-            <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="hidden lg:grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Tải Ảnh & Xem Mask</h2>
                 <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
@@ -904,7 +713,6 @@ export default function ImageInpaintingApp() {
                   {!image && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
-                      <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
                       <Button
                         onClick={() => fileInputRef.current?.click()}
                         className="mt-4 bg-blue-900 hover:bg-blue-800 text-white"
@@ -922,181 +730,72 @@ export default function ImageInpaintingApp() {
                     </div>
                   )}
                 </div>
-                {image && (
-                  <Tabs defaultValue="info" className="w-full">
-                    <TabsList className="grid w-full grid-cols-1 bg-blue-50 rounded-md">
-                      <TabsTrigger
-                        value="info"
-                        className="data-[state=active]:bg-blue-900 data-[state=active]:text-white hover:bg-blue-100"
-                      >
-                        <Info className="h-4 w-4 mr-1" />
-                        Hướng dẫn
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="info" className="space-y-2 mt-2">
-                      <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
-                        <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                        <p>2. Nhấn "Vẽ Mask" để tạo mask trên ảnh.</p>
-                        <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                )}
               </div>
-
               <div className="flex flex-col gap-2">
                 <h2 className="text-xl font-medium text-blue-900">Kết Quả Xử Lý</h2>
                 <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 h-[300px] w-full overflow-hidden">
                   <canvas ref={outputCanvasRef} className="max-w-full max-h-full object-contain" />
                   {isProcessing && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                      <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
-                      <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-200/80">
+                      <Loader2 className="h-12 w-12 text-blue-900 animate-spin" />
                     </div>
                   )}
                 </div>
-                <div className="mt-2">
-                  <Alert className={isProcessing ? "animate-pulse bg-blue-50" : "bg-white"}>
-                    <AlertTitle className="text-blue-900 font-medium">Ý nghĩa sản phẩm</AlertTitle>
-                    <AlertDescription className="text-sm text-gray-700">
-                      {getProductQuote()}
-                    </AlertDescription>
-                  </Alert>
-                </div>
-                <Dialog open={isCustomerInfoOpen} onOpenChange={setIsCustomerInfoOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      onClick={downloadImage}
-                      disabled={!inpaintedImage}
-                      className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Tải kết quả
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-semibold text-blue-900">
-                        Thông Tin Khách Hàng
-                      </DialogTitle>
-                      <DialogDescription className="text-sm text-gray-600">
-                        Vui lòng điền thông tin để tải kết quả xử lý ảnh.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleCustomerInfoSubmit} className="space-y-5">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                          Số Điện Thoại <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="phone"
-                          value={customerInfo.phone}
-                          onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                          required
-                          type="tel"
-                          placeholder="0901234567"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                          Email <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="email"
-                          value={customerInfo.email}
-                          onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                          required
-                          type="email"
-                          placeholder="email@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="field" className="text-sm font-medium text-gray-700">
-                          Lĩnh Vực Công Tác <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="field"
-                          value={customerInfo.field}
-                          onChange={(e) => setCustomerInfo({ ...customerInfo, field: e.target.value })}
-                          required
-                          placeholder="Thiết kế nội thất"
-                        />
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full bg-blue-900 hover:bg-blue-800 text-white"
-                        disabled={isSubmittingInfo}
-                      >
-                        {isSubmittingInfo ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          "Xác Nhận & Tải Kết Quả"
-                        )}
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
               </div>
             </div>
 
-            {/* Nút xử lý trên desktop */}
-            <div className="hidden lg:block">
-              {image && (
-                <div className="flex flex-col gap-4">
-                  <div className="flex gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">...</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={handleResetCanvas}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Tải ảnh mới
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleClearMask}>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Xóa mask
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={saveCanvasState}>
-                          <Save className="h-4 w-4 mr-2" />
-                          Lưu ảnh
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          className="bg-gray-200 hover:bg-gray-300 text-blue-900"
-                          title="Vẽ Mask"
-                        >
-                          <Paintbrush className="h-4 w-4 mr-2" />
+            {image && (
+              <div className="hidden lg:flex flex-col gap-4">
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Tải ảnh mới
+                  </Button>
+                  <Button
+                    onClick={handleClearMask}
+                    className="bg-gray-200 hover:bg-gray-300 text-blue-900"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Xóa mask
+                  </Button>
+                  <Dialog open={isMaskModalOpen} onOpenChange={setIsMaskModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-gray-200 hover:bg-gray-300 text-blue-900">
+                        <Paintbrush className="h-4 w-4 mr-2" />
+                        Vẽ Mask
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-hidden p-6 bg-white rounded-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-semibold text-blue-900">
                           Vẽ Mask
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[1024px] max-h-[80vh] overflow-auto">
-                        <DialogHeader>
-                          <DialogTitle className="text-xl font-semibold text-blue-900">Vẽ Mask</DialogTitle>
-                          <DialogDescription className="text-sm text-gray-600">
-                            Dùng chuột trái để vẽ mask (màu trắng), chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa bên dưới.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="relative bg-gray-100 rounded-md flex items-center justify-center border border-gray-300 overflow-auto">
-                          <canvas
-                            ref={maskModalCanvasRef}
-                            className="max-w-full cursor-crosshair"
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={stopDrawing}
-                            onMouseLeave={stopDrawing}
-                            onContextMenu={(e) => e.preventDefault()}
-                            onTouchStart={startDrawingTouch}
-                            onTouchMove={drawTouch}
-                            onTouchEnd={stopDrawingTouch}
-                            onClick={deletePathAtPosition}
-                          />
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-gray-600">
+                          Dùng chuột trái để vẽ mask, chuột phải để xóa mask. Trên cảm ứng, bật chế độ xóa.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex flex-col gap-6">
+                        <div className="flex items-center justify-center">
+                          <div className="canvas-container relative bg-gray-100 rounded-md border border-gray-300 overflow-auto">
+                            <canvas
+                              ref={maskModalCanvasRef}
+                              className="max-w-full cursor-crosshair"
+                              onMouseDown={startDrawing}
+                              onMouseMove={draw}
+                              onMouseUp={stopDrawing}
+                              onMouseLeave={stopDrawing}
+                              onContextMenu={(e) => e.preventDefault()}
+                              onTouchStart={startDrawingTouch}
+                              onTouchMove={drawTouch}
+                              onTouchEnd={stopDrawingTouch}
+                            />
+                          </div>
                         </div>
-                        <div className="flex justify-between mt-4">
-                          <div className="flex gap-2 items-center">
+                        <div className="flex justify-between items-center flex-col md:flex-row gap-3">
+                          <div className="flex items-center gap-3">
                             <label className="text-sm font-medium text-blue-900">
                               Kích thước: {brushSize}px
                             </label>
@@ -1110,43 +809,49 @@ export default function ImageInpaintingApp() {
                             />
                             <Button
                               onClick={() => setEraseMode(!eraseMode)}
-                              className={`ml-4 ${eraseMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-900 hover:bg-blue-800"} text-white`}
+                              className={`${
+                                eraseMode
+                                  ? "bg-red-500 hover:bg-red-600"
+                                  : "bg-blue-900 hover:bg-blue-800"
+                              } text-white`}
                             >
                               {eraseMode ? "Chế độ Xóa" : "Chế độ Vẽ"}
                             </Button>
                           </div>
-                          <Button onClick={() => setIsMaskModalOpen(false)} className="bg-blue-900 hover:bg-blue-800 text-white">
-                            Hoàn tất
+                          <Button
+                            onClick={() => setIsMaskModalOpen(false)}
+                            className="bg-blue-900 hover:bg-blue-800 text-white"
+                          >
+                            Xác nhận
                           </Button>
                         </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!image || isProcessing || !selectedProduct}
-                    className="bg-blue-900 hover:bg-blue-800 text-white"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Send className="h-4 w-4 mr-2" />
-                    )}
-                    Xử lý ảnh
-                  </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-              )}
-            </div>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!image || isProcessing || !selectedProduct}
+                  className="bg-blue-900 hover:bg-blue-800 text-white"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Xử lý ảnh
+                </Button>
+              </div>
+            )}
 
             {error && (
-              <Alert variant="destructive" className="mt-2 p-4">
-                <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
-                <AlertDescription className="text-sm">{error}</AlertDescription>
+              <Alert variant="destructive">
+                <AlertTitle>Lỗi</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
           </Card>
 
-          {/* Menu sản phẩm trên mobile */}
           <div className="lg:hidden">
             <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md">
               <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
@@ -1157,7 +862,7 @@ export default function ImageInpaintingApp() {
                     {products.map((product) => (
                       <Button
                         key={product.name}
-                        onClick={() => handleProductSelect(product.name)}
+                        onClick={() => setSelectedProduct(product.name)}
                         className={`w-full text-left justify-start py-2 px-4 text-sm ${
                           selectedProduct === product.name
                             ? "bg-blue-900 text-white hover:bg-blue-800"
@@ -1188,7 +893,6 @@ export default function ImageInpaintingApp() {
           </div>
         </div>
 
-        {/* Menu sản phẩm trên desktop */}
         <div className="hidden lg:flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
@@ -1199,7 +903,7 @@ export default function ImageInpaintingApp() {
                   {products.map((product) => (
                     <Button
                       key={product.name}
-                      onClick={() => handleProductSelect(product.name)}
+                      onClick={() => setSelectedProduct(product.name)}
                       className={`w-full text-left justify-start py-2 px-4 text-sm ${
                         selectedProduct === product.name
                           ? "bg-blue-900 text-white hover:bg-blue-800"
@@ -1215,11 +919,6 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
       </div>
-
-      <footer className="mt-12 py-4 text-center text-sm text-blue-900/70">
-        <p>Liên hệ: support@caslaquartz.com | Hotline: 1234-567-890</p>
-        <p>© 2025 CaslaQuartz. All rights reserved.</p>
-      </footer>
     </div>
   );
 }
