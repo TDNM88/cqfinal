@@ -95,11 +95,6 @@ const products = Object.fromEntries(
 
 export const dynamic = "force-dynamic";
 
-
-
-// Vô hiệu hóa prerendering tĩnh
-export const dynamic = "force-dynamic"
-
 export default function ImageInpaintingApp() {
   // State
   const [image, setImage] = useState<HTMLImageElement | null>(null)
