@@ -484,7 +484,7 @@ export default function ImageInpaintingApp() {
       <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
         CaslaQuartz AI
       </h1>
-
+  
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
@@ -527,6 +527,12 @@ export default function ImageInpaintingApp() {
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-200/50">
                     <Loader2 className="h-12 w-12 text-blue-900 animate-spin mb-4" />
                     <p className="text-blue-900/70 text-lg">Đang xử lý ảnh...</p>
+                    {selectedProduct && (
+                      <div className="mt-4 p-2 bg-white rounded shadow-md text-center">
+                        <h3 className="font-semibold text-blue-900">{selectedProduct}</h3>
+                        <p className="text-blue-900/70 text-sm">{getProductQuote()}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
