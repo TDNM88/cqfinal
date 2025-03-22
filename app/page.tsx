@@ -505,12 +505,12 @@ export default function ImageInpaintingApp() {
                 />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2048.jpg" class="h-20 w-20 text-blue-900/50 mb-4" alt="Icon" />
+                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2048.jpg" class="h-50 w-50 text-blue-900/50 mb-4" alt="Icon" />
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
                     >
-                      <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/logo.png" className="h-4 w-4 mr-2" alt="Upload Icon" />
+                      <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/logo.png" className="h-10 w-10 mr-2" alt="Upload Icon" />
                       Tải ảnh lên để bắt đầu
                     </Button>
                     <input
