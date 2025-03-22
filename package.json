@@ -60,7 +60,7 @@
     "vaul": "^0.9.6",
     "nodemailer": "^6.9.13",
     "zod": "^3.24.1",
-    "react-sketch-canvas": "^2.0.0"
+    "react-sketch-canvas": "^6.2.0"
   },
   "devDependencies": {
     "@types/node": "^22",
