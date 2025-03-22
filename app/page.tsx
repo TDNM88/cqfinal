@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,7 +26,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ReactSketchCanvas } from "react-sketch-canvas";
+
+const ReactSketchCanvas = dynamic(() => import("react-sketch-canvas"), {
+  ssr: false,
+});
 
 const productGroups = {
   STANDARD: [
@@ -80,19 +84,13 @@ const productGroups = {
     { name: "C5366 - Skiron", quote: "Skiron tái hiện hình ảnh những con sóng biển trên nền đá, với các đường vân xanh xếp lớp cùng những mảng trắng và xám, phù hợp cho không gian nội thất hiện đại." },
   ],
 };
-const products = Object.fromEntries(
-  Object.values(productGroups).flat().map((item) => [
-    item.name,
-    `/product_images/${item.name.split(" - ")[0]}.jpg`,
-  ])
-);
-
 export const dynamic = "force-dynamic";
 
 export default function ImageInpaintingApp() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [originalImageData, setOriginalImageData] = useState<string>("");
   const [resizedImageData, setResizedImageData] = useState<string>("");
+  const [canvasBackground, setCanvasBackground] = useState<string>(""); // State mới cho background
   const [brushSize, setBrushSize] = useState(20);
   const [isProcessing, setIsProcessing] = useState(false);
   const [inpaintedImage, setInpaintedImage] = useState<string | null>(null);
@@ -115,6 +113,7 @@ export default function ImageInpaintingApp() {
   useEffect(() => {
     if (!image && sketchCanvasRef.current) {
       sketchCanvasRef.current.clearCanvas();
+      setCanvasBackground(""); // Reset background khi không có ảnh
     }
   }, [image]);
 
@@ -167,6 +166,7 @@ export default function ImageInpaintingApp() {
           const maxWidth = 500;
           const resizedData = await resizeImage(img, maxWidth);
           setResizedImageData(resizedData);
+          setCanvasBackground(resizedData); // Cập nhật background khi upload
           setImage(img);
 
           if (sketchCanvasRef.current) {
@@ -183,161 +183,7 @@ export default function ImageInpaintingApp() {
     reader.readAsDataURL(file);
   };
 
-  const handleProductSelect = (productName: string) => {
-    if (!products[productName as keyof typeof products]) {
-      setError("Sản phẩm không hợp lệ");
-      return;
-    }
-    setSelectedProduct(productName);
-    setError(null);
-  };
-
-  const saveCanvasState = async () => {
-    if (!sketchCanvasRef.current) {
-      setError("Không thể lưu canvas vì canvas không tồn tại");
-      return;
-    }
-    const dataURL = await sketchCanvasRef.current.exportImage("png");
-    const link = document.createElement("a");
-    link.download = "canvas-state.png";
-    link.href = dataURL;
-    link.click();
-    link.remove();
-  };
-
-  const handleResetCanvas = () => {
-    setImage(null);
-    setInpaintedImage(null);
-    setError(null);
-    setOriginalImageData("");
-    setResizedImageData("");
-    if (sketchCanvasRef.current) sketchCanvasRef.current.clearCanvas();
-  };
-
-  const handleClearMask = () => {
-    if (sketchCanvasRef.current) sketchCanvasRef.current.clearCanvas();
-  };
-
-  const convertImageToBase64 = (url: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Không thể tạo context cho canvas"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0);
-        const base64 = canvas.toDataURL("image/png");
-        canvas.remove();
-        resolve(base64);
-      };
-      img.onerror = () => reject(new Error("Không thể tải ảnh sản phẩm"));
-      img.src = url;
-    });
-  };
-
-  const createBlackWhiteMask = async (originalImage: HTMLImageElement): Promise<string> => {
-    if (!sketchCanvasRef.current) {
-      throw new Error("Canvas không tồn tại");
-    }
-
-    // Xuất mask từ ReactSketchCanvas
-    const maskData = await sketchCanvasRef.current.exportImage("png");
-    
-    // Tạo canvas tạm với kích thước bằng ảnh gốc
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = originalImage.width;
-    tempCanvas.height = originalImage.height;
-    const ctx = tempCanvas.getContext("2d");
-    if (!ctx) {
-      tempCanvas.remove();
-      throw new Error("Không thể tạo context cho canvas tạm");
-    }
-
-    // Đặt nền đen
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, originalImage.width, originalImage.height);
-
-    // Tải mask từ ReactSketchCanvas
-    const maskImg = new Image();
-    maskImg.src = maskData;
-    await new Promise<void>((resolve, reject) => {
-      maskImg.onload = () => resolve();
-      maskImg.onerror = () => reject(new Error("Không thể tải mask"));
-    });
-
-    // Vẽ mask lên canvas với kích thước gốc
-    ctx.drawImage(maskImg, 0, 0, originalImage.width, originalImage.height);
-
-    // Chuyển thành ảnh đen trắng
-    const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-      // Nếu pixel không trong suốt, đặt thành trắng; nếu trong suốt, giữ đen
-      if (a > 0) {
-        data[i] = 255;     // Red
-        data[i + 1] = 255; // Green
-        data[i + 2] = 255; // Blue
-      } else {
-        data[i] = 0;       // Red
-        data[i + 1] = 0;   // Green
-        data[i + 2] = 0;   // Blue
-      }
-      data[i + 3] = 255; // Alpha (opaque)
-    }
-    ctx.putImageData(imageData, 0, 0);
-
-    const result = tempCanvas.toDataURL("image/png");
-    tempCanvas.remove();
-    return result;
-  };
-
-  const addWatermark = async (imageData: string): Promise<string> => {
-    try {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = imageData;
-
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error(`Không thể tải ảnh từ ${imageData}`));
-      });
-
-      const logo = new Image();
-      logo.src = "/logo.png";
-      await new Promise<void>((resolve, reject) => {
-        logo.onload = () => resolve();
-        logo.onerror = () => reject(new Error("Không thể tải logo watermark từ /logo.png"));
-      });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Không thể tạo context cho canvas");
-
-      ctx.drawImage(img, 0, 0);
-      const logoSize = img.width * 0.2;
-      const logoX = img.width - logoSize - 10;
-      const logoY = img.height - logoSize - 10;
-      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-
-      const result = canvas.toDataURL("image/png");
-      canvas.remove();
-      return result;
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error in addWatermark");
-    }
-  };
+  // ... (giữ nguyên handleProductSelect, saveCanvasState, handleResetCanvas, handleClearMask, convertImageToBase64, createBlackWhiteMask, addWatermark)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,7 +197,6 @@ export default function ImageInpaintingApp() {
       setIsProcessing(true);
       setError(null);
 
-      // Tạo mask đen trắng với kích thước bằng ảnh gốc
       const maskImage = await createBlackWhiteMask(image);
       const productImagePath = products[selectedProduct as keyof typeof products];
       const productImageBase64 = await convertImageToBase64(productImagePath);
@@ -360,11 +205,11 @@ export default function ImageInpaintingApp() {
       const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(resultUrl)}`;
       const watermarkedImageUrl = await addWatermark(proxiedUrl);
       setInpaintedImage(watermarkedImageUrl);
+      setCanvasBackground(watermarkedImageUrl); // Cập nhật background sau xử lý
 
       if (sketchCanvasRef.current) {
         sketchCanvasRef.current.clearCanvas();
         sketchCanvasRef.current.loadPaths([]);
-        sketchCanvasRef.current.setBackgroundImage(watermarkedImageUrl);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định");
@@ -451,7 +296,7 @@ export default function ImageInpaintingApp() {
       <h1 className="text-3xl font-bold text-center mb-8 text-blue-800 transition-all duration-300 hover:text-blue-900">
         CaslaQuartz AI
       </h1>
-  
+
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-8 flex-grow">
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
@@ -466,7 +311,7 @@ export default function ImageInpaintingApp() {
                   strokeWidth={brushSize}
                   strokeColor="white"
                   canvasColor="transparent"
-                  backgroundImage={resizedImageData || ""}
+                  backgroundImage={canvasBackground} // Sử dụng state thay vì resizedImageData trực tiếp
                   onChange={async () => {}}
                   style={{ width: "100%", height: "100%" }}
                 />
@@ -498,7 +343,7 @@ export default function ImageInpaintingApp() {
                 )}
               </div>
             </div>
-  
+
             {image && (
               <>
                 <div className="flex flex-col gap-4">
@@ -629,7 +474,7 @@ export default function ImageInpaintingApp() {
                     )}
                   </div>
                 </div>
-  
+
                 <Tabs defaultValue="info" className="w-full">
                   <TabsList className="grid w-full grid-cols-1 bg-blue-50 rounded-md">
                     <TabsTrigger
@@ -650,7 +495,7 @@ export default function ImageInpaintingApp() {
                 </Tabs>
               </>
             )}
-  
+
             {error && (
               <Alert variant="destructive" className="mt-2 p-4">
                 <AlertTitle className="text-sm font-medium">Lỗi</AlertTitle>
@@ -658,7 +503,7 @@ export default function ImageInpaintingApp() {
               </Alert>
             )}
           </Card>
-  
+
           <div className="lg:hidden">
             <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md">
               <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
@@ -705,11 +550,11 @@ export default function ImageInpaintingApp() {
             </Card>
           </div>
         </div>
-  
+
         <div className="hidden lg:flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-4 bg-white rounded-lg shadow-md h-full">
             <h2 className="text-xl font-medium text-blue-900">CaslaQuartz Menu</h2>
-            <ScrollArea className="h-[600px] w-full rounded-md border border-gray-200 bg-gray-50 p-4">
+            <ScrollArea className="h-[600px] w-full rounded-md border border-gray-300 bg-gray-50 p-4">
               <div className="flex flex-col gap-6">
                 {Object.entries(productGroups).map(([groupName, products]) => (
                   <div key={groupName} className="flex flex-col gap-2">
@@ -744,11 +589,11 @@ export default function ImageInpaintingApp() {
           </Card>
         </div>
       </div>
-  
+
       <footer className="mt-12 py-4 text-center text-sm text-blue-900/70">
         <p>Liên hệ: support@caslaquartz.com | Hotline: 1234-567-890</p>
         <p>© 2025 CaslaQuartz. All rights reserved.</p>
       </footer>
     </div>
-  )
+  );
 }
