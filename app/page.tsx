@@ -505,7 +505,7 @@ export default function ImageInpaintingApp() {
                 />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/logo.png" className="h-12 w-12 text-blue-900/50 mb-4" alt="Icon" />
+                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2048.jpg" className="h-12 w-12 text-blue-900/50 mb-4" alt="Icon" />
                     <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
                     <Button
                       onClick={() => fileInputRef.current?.click()}
