@@ -250,7 +250,7 @@ export default function ImageInpaintingApp() {
       throw new Error("Canvas không tồn tại");
     }
   
-    // Xuất mask từ ReactSketchCanvas
+    // Xuất mask từ ReactSketchCanvas (chỉ nét vẽ, không bao gồm ảnh nền)
     const maskData = await sketchCanvasRef.current.exportImage("png");
   
     // Tạo canvas với kích thước ảnh gốc
@@ -278,30 +278,59 @@ export default function ImageInpaintingApp() {
       maskImg.onerror = () => reject(new Error("Không thể tải mask"));
     });
   
-    // Vẽ mask lên canvas với kích thước ảnh gốc
-    ctx.drawImage(maskImg, 0, 0, originalImage.width, originalImage.height);
+    // Tạo canvas tạm để xử lý mask mà không ảnh hưởng từ ảnh nền
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = originalImage.width;
+    maskCanvas.height = originalImage.height;
+    const maskCtx = maskCanvas.getContext("2d");
+    if (!maskCtx) {
+      tempCanvas.remove();
+      maskCanvas.remove();
+      throw new Error("Không thể tạo context cho mask canvas");
+    }
   
-    // Chuyển thành ảnh đen trắng dựa trên màu trắng từ vùng vẽ
+    // Vẽ mask lên canvas tạm (không vẽ ảnh nền)
+    maskCtx.drawImage(maskImg, 0, 0, originalImage.width, originalImage.height);
+  
+    // Lấy dữ liệu pixel từ mask và chỉ giữ vùng vẽ (alpha > 0)
+    const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    const maskDataPixels = maskImageData.data;
+    for (let i = 0; i < maskDataPixels.length; i += 4) {
+      const a = maskDataPixels[i + 3];
+      if (a === 0) {
+        // Nếu trong suốt (không vẽ), đặt alpha thành 0
+        maskDataPixels[i] = 0;
+        maskDataPixels[i + 1] = 0;
+        maskDataPixels[i + 2] = 0;
+        maskDataPixels[i + 3] = 0;
+      } else {
+        // Nếu có vẽ, đặt thành trắng
+        maskDataPixels[i] = 255;
+        maskDataPixels[i + 1] = 255;
+        maskDataPixels[i + 2] = 255;
+        maskDataPixels[i + 3] = 255;
+      }
+    }
+    maskCtx.putImageData(maskImageData, 0, 0);
+  
+    // Vẽ mask đã xử lý lên canvas chính
+    ctx.drawImage(maskCanvas, 0, 0);
+  
+    // Đảm bảo ảnh cuối cùng là đen trắng
     const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
       const a = data[i + 3];
-  
-      // Nếu pixel là trắng (hoặc gần trắng) từ vùng vẽ, giữ trắng
-      if (r > 200 && g > 200 && b > 200 && a > 0) {
-        data[i] = 255;     // Red
-        data[i + 1] = 255; // Green
-        data[i + 2] = 255; // Blue
+      if (a > 0) {
+        data[i] = 255;     // White
+        data[i + 1] = 255;
+        data[i + 2] = 255;
       } else {
-        // Các pixel khác đặt thành đen
-        data[i] = 0;       // Red
-        data[i + 1] = 0;   // Green
-        data[i + 2] = 0;   // Blue
+        data[i] = 0;       // Black
+        data[i + 1] = 0;
+        data[i + 2] = 0;
       }
-      data[i + 3] = 255; // Alpha (opaque)
+      data[i + 3] = 255; // Opaque
     }
     ctx.putImageData(imageData, 0, 0);
   
@@ -323,6 +352,7 @@ export default function ImageInpaintingApp() {
     console.log("Mask có đen và trắng không?", { hasBlack, hasWhite });
   
     tempCanvas.remove();
+    maskCanvas.remove();
     return result;
   };
 
