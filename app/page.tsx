@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import ReactSketchCanvas from "react-sketch-canvas";
+import { ReactSketchCanvas } from "react-sketch-canvas";
 
 const productGroups = {
   STANDARD: [
