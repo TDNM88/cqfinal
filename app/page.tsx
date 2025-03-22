@@ -489,7 +489,7 @@ export default function ImageInpaintingApp() {
         <div className="flex flex-col space-y-4">
           <Card className="p-6 flex flex-col gap-6 bg-white rounded-lg shadow-md">
             <div className="flex flex-col gap-2">
-              <h2 className="text-xl font-medium text-blue-900">CaslaQuartz AI Editor</h2>
+              <h2 className="text-xl font-medium text-blue-900">CaslaQuartz AI là ứng dụng thông minh, cho phép người dùng khám phá và lựa chọn từ bộ sưu tập đá thạch anh nhân tạo đa dạng của CaslaQuartz. Với khả năng xem trước trực quan, người dùng dễ dàng áp dụng và chọn vật liệu phù hợp cho các dự án nội thất một cách nhanh chóng và chính xác.</h2>
               <div
                 className="relative bg-gray-100 rounded-md border border-gray-300 w-full overflow-auto"
                 style={{ maxHeight: "500px", aspectRatio: image ? `${image.width}/${image.height}` : "4/3" }}
