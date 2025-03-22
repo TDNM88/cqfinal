@@ -500,7 +500,7 @@ export default function ImageInpaintingApp() {
                   strokeWidth={brushSize}
                   strokeColor="white"
                   canvasColor="transparent"
-                  backgroundImage={canvasBackground} // Sử dụng state mới
+                  backgroundImage={canvasBackground}
                   onChange={async () => {}}
                   style={{ width: "100%", height: "100%" }}
                 />
@@ -512,7 +512,7 @@ export default function ImageInpaintingApp() {
                       onClick={() => fileInputRef.current?.click()}
                       className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
                     >
-                      <Upload className="h-4 w-4 mr-2" />
+                      <img src={CustomIcon} className="h-4 w-4 mr-2" alt="Upload Icon" />
                       Tải ảnh lên
                     </Button>
                     <input
