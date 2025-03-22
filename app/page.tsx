@@ -492,7 +492,7 @@ export default function ImageInpaintingApp() {
               <h2 className="text-lg font-medium text-blue-900">CaslaQuartz AI là ứng dụng thông minh, hỗ trợ lựa chọn đá thạch anh nhân tạo đa dạng, xem trước trực quan và áp dụng dễ dàng vào các dự án nội thất, mang lại sự tiện lợi và chính xác tối ưu.</h2>
               <div
                 className="relative bg-gray-100 rounded-md border border-gray-300 w-full overflow-auto"
-                style={{ maxHeight: "500px", aspectRatio: image ? `${image.width}/${image.height}` : "4/3" }}
+                style={{ maxHeight: "800px", aspectRatio: image ? `${image.width}/${image.height}` : "4/3" }}
               >
                 <ReactSketchCanvas
                   ref={sketchCanvasRef}
@@ -505,7 +505,7 @@ export default function ImageInpaintingApp() {
                 />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2048.jpg" class="h-40 w-40 text-blue-900/50 mb-4" alt="Icon" />
+                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2048.jpg" class="h-80 w-80 text-blue-900/50 mb-4" alt="Icon" />
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
