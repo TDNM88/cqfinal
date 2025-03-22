@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import CustomIcon from "@/public/icons/logo2048.jpg";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -505,7 +506,7 @@ export default function ImageInpaintingApp() {
                 />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <Upload className="h-12 w-12 text-blue-900/50 mb-4" />
+                    <img src={CustomIcon} className="h-12 w-12 text-blue-900/50 mb-4" alt="Custom Icon" />
                     <p className="text-blue-900/70 text-lg">Tải ảnh lên để bắt đầu</p>
                     <Button
                       onClick={() => fileInputRef.current?.click()}
