@@ -505,7 +505,7 @@ export default function ImageInpaintingApp() {
                 />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2048.jpg" class="h-50 w-50 text-blue-900/50 mb-4" alt="Icon" />
+                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2048.jpg" class="h-40 w-40 text-blue-900/50 mb-4" alt="Icon" />
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
@@ -681,7 +681,7 @@ export default function ImageInpaintingApp() {
                   <TabsContent value="info" className="space-y-2 mt-2">
                     <div className="bg-blue-50 p-2 rounded-md text-sm text-blue-900">
                       <p>1. Chọn nhóm sản phẩm và sản phẩm từ cột bên phải.</p>
-                      <p>2. Vẽ mặt nạ lên vùng cần xử lý (chuột trái để vẽ, chuột phải để tẩy).</p>
+                      <p>2. Vẽ mặt nạ lên vùng cần xử lý.</p>
                       <p>3. Nhấn "Xử lý ảnh" để tạo kết quả.</p>
                     </div>
                   </TabsContent>
