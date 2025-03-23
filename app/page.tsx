@@ -505,7 +505,7 @@ export default function ImageInpaintingApp() {
                 />
                 {!image && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/icons/logo2.png" class="h-40 w-40 text-blue-900/50 mb-4" alt="Icon" />
+                    <img src="https://raw.githubusercontent.com/TDNM88/cqfinal/refs/heads/main/public/logo2.png" class="h-40 w-40 text-blue-900/50 mb-4" alt="Icon" />
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       className="mt-4 bg-blue-900 hover:bg-blue-800 text-white pointer-events-auto"
